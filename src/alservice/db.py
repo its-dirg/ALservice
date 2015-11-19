@@ -1,12 +1,12 @@
 from abc import abstractmethod
 from datetime import datetime
 import hashlib
+
 from alservice.exception import ALserviceDbKeyDoNotExistsError, ALserviceDbUnknownError, \
     ALserviceDbNotUniqueTokenError, ALserviceDbValidationError, ALserviceDbValueDoNotExistsError
 
 
 class TicketState(object):
-
     def __init__(self, timestamp, key, idp, redirect):
         """
 
@@ -24,7 +24,6 @@ class TicketState(object):
 
 
 class TokenState(object):
-
     def __init__(self, timestamp, email_hash):
         """
 
@@ -40,7 +39,6 @@ class TokenState(object):
 
 
 class ALdatabase(object):
-
     @abstractmethod
     def get_uuid(self, key: str) -> str:
         """
@@ -51,7 +49,7 @@ class ALdatabase(object):
         return None
 
     @abstractmethod
-    def save_ticket_state(self, ticket: str, key: str, idp: str, redirect:str):
+    def save_ticket_state(self, ticket: str, key: str, idp: str, redirect: str):
         """
         :param ticket: A uuid that represents a state.
         :param state: The state
@@ -214,7 +212,7 @@ class ALDictDatabase(ALdatabase):
                 }
             )
             if token in self.token:
-               raise ALserviceDbNotUniqueTokenError()
+                raise ALserviceDbNotUniqueTokenError()
             _dict = {
                 ALDictDatabase.TOKEN_EMAIL_HASH: email_hash,
                 ALDictDatabase.TICKET_TIMESTAMP: datetime.now
@@ -278,7 +276,7 @@ class ALDictDatabase(ALdatabase):
                 }
             )
             if email_hash in self.account:
-               raise ALserviceDbNotUniqueTokenError()
+                raise ALserviceDbNotUniqueTokenError()
             _dict = {
                 ALDictDatabase.ACCOUNT_PIN_HASH: pin_hash,
                 ALDictDatabase.ACCOUNT_UUID: uuid,
