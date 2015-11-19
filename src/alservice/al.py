@@ -123,9 +123,9 @@ class AccountLinking(object):
         hash = hashlib.sha512((value + salt).encode("UTF-8")).hexdigest()
         return hash
 
-    def create_ticket(self, key: str, idp: str):
+    def create_ticket(self, key: str, idp: str, redirect: str):
         ticket = AccountLinking.create_token(key, self.salt)
-        self.db.save_ticket_state(ticket, key, idp)
+        self.db.save_ticket_state(ticket, key, idp, redirect)
         return ticket
 
     def create_account_step1(self, email: str, ticket: str):
