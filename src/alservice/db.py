@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 __author__ = 'haho0032'
 
 
@@ -13,6 +15,7 @@ class TicketState(object):
         :param data:
         :return:
         """
+        self.timestamp = timestamp
         self.key = key
         self.idp = idp
 
@@ -35,24 +38,25 @@ class EmailState(object):
 
 class ALdatabase(object):
 
+    @abstractmethod
     def get_uuid(self, key: str) -> str:
         """
 
         :param key: A key that uniquely identifies an Idp and the users identification on that IdP.
         :return: An accounts uuid.
         """
-        raise NotImplementedError()
+        return None
 
-    # save_uuid_request create timestamp in function/db
+    @abstractmethod
     def save_ticket_state(self, ticket: str, key: str, idp: str):
         """
         :param ticket: A uuid that represents a state.
         :param state: The state
         :return:
         """
-        raise NotImplementedError()
+        return
 
-    #save_email (saving token for email) Create timestamp in function
+    @abstractmethod
     def save_token_state(self, token: str, email_hash: str):
         """
 
@@ -60,38 +64,40 @@ class ALdatabase(object):
         :param state: The state
         :return:
         """
-        raise NotImplementedError()
+        return
 
-    #get_email
+    @abstractmethod
     def get_token_state(self, token: str) -> EmailState:
         """
 
         :param token:
         :return:
         """
-        raise NotImplementedError()
+        return None
 
-    #get_uuid_request
+    @abstractmethod
     def get_ticket_state(self, ticket: str) -> TicketState:
-        raise NotImplementedError()
+        return None
 
-    #save_email (saves account information) create timestamp in function/db
+    @abstractmethod
     def create_account(self, email_hash: str, pin_hash: str, uuid: str):
-        raise NotImplementedError
+        return
 
-    #save_uuid
+    @abstractmethod
     def create_link(self, key: str, idp: str, email_hash: str):
-        NotImplementedError()
+        return
 
-    #get_user_uuid
+    @abstractmethod
     def verify_account(self, email_hash: str, pin_hash: str) -> str:
-        NotImplementedError()
+        return None
 
+    @abstractmethod
     def remove_ticket_state(self, ticket: str):
-        NotImplementedError()
+        return
 
+    @abstractmethod
     def remove_token_state(self, token: str):
-        NotImplementedError()
+        return
 
 
 class ALDictDatabase(ALdatabase):
