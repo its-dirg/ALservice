@@ -70,7 +70,7 @@ class ALdatabase(object):
         return
 
     @abstractmethod
-    def get_token_state(self, token: str) -> EmailState:
+    def get_token_state(self, token: str) -> TokenState:
         """
 
         :param token:
