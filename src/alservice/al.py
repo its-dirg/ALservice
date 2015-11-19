@@ -142,9 +142,8 @@ class AccountLinking(object):
     def link_key(self, email, pin, ticket):
         email_hash = self.create_hash(email, self.salt)
         pin_hash = self.create_hash(pin, self.salt)
-        uuid = self.db.verify_account(email_hash, pin_hash)
-        if uuid:
-            ticket_data = self.db.get_ticket_state(ticket)
-            self.db.remove_ticket_state(ticket)
-            self.db.create_link(ticket_data.key, ticket_data.idp, email_hash)
+        self.db.verify_account(email_hash, pin_hash)
+        ticket_data = self.db.get_ticket_state(ticket)
+        self.db.remove_ticket_state(ticket)
+        self.db.create_link(ticket_data.key, ticket_data.idp, email_hash)
         raise ALserviceAuthenticationError()
