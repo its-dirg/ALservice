@@ -39,6 +39,19 @@ class TokenState(object):
 
 
 class ALdatabase(object):
+
+    @staticmethod
+    def validation(attributes: dict):
+        validation_message = ""
+        if attributes is not None:
+            for attr in attributes:
+                if attributes[attr] is None:
+                    validation_message = "The value for %s is not allowed to be empty." % attr
+                elif not isinstance(attributes[attr], str):
+                    validation_message = "The type of %s must be string." % attr
+        if len(validation_message) > 0:
+            raise ALserviceDbValidationError(validation_message)
+
     @abstractmethod
     def get_uuid(self, key: str) -> str:
         """
@@ -139,18 +152,6 @@ class ALDictDatabase(ALdatabase):
 
         self.link_to_key = {}
         """:type: dict[str, dict[str, str]]"""
-
-    @staticmethod
-    def validation(attributes: dict):
-        validation_message = ""
-        if attributes is not None:
-            for attr in attributes:
-                if attributes[attr] is None:
-                    validation_message = "The value for %s is not allowed to be empty." % attr
-                elif not isinstance(attributes[attr], str):
-                    validation_message = "The type of %s must be string." % attr
-        if len(validation_message) > 0:
-            raise ALserviceDbValidationError(validation_message)
 
     def get_uuid(self, key: str) -> str:
         """
