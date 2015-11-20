@@ -40,6 +40,16 @@ class TokenState(object):
 
 
 class ALdatabase(object):
+    TOKEN = "token"
+    TICKET = "ticket"
+    KEY = "key"
+    IDP = "idp"
+    REDIRECT = "redirect"
+    EMAIL_HASH = "email_hash"
+    PIN_HASH = "pin_hash"
+    OLD_PIN_HASH = "old_%s" % PIN_HASH
+    NEW_PIN_HASH = "new_%s" % PIN_HASH
+    UUID = "uuid"
 
     @staticmethod
     def validation(attributes: dict):
@@ -63,10 +73,9 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALDictDatabase.KEY_TO_LINK_KEY_PRIMARY: key
+                ALdatabase.KEY: key
             }
         )
-        return None
 
     @abstractmethod
     def save_ticket_state(self, ticket: str, key: str, idp: str, redirect: str):
@@ -75,7 +84,14 @@ class ALdatabase(object):
         :param state: The state
         :return:
         """
-        return
+        ALDictDatabase.validation(
+            {
+                ALdatabase.TICKET: ticket,
+                ALdatabase.KEY: key,
+                ALdatabase.IDP: idp,
+                ALdatabase.REDIRECT: redirect,
+            }
+        )
 
     @abstractmethod
     def save_token_state(self, token: str, email_hash: str):
@@ -85,7 +101,12 @@ class ALdatabase(object):
         :param state: The state
         :return:
         """
-        return
+        ALDictDatabase.validation(
+            {
+                ALdatabase.TOKEN: token,
+                ALdatabase.EMAIL_HASH: email_hash
+            }
+        )
 
     @abstractmethod
     def get_token_state(self, token: str) -> TokenState:
@@ -94,43 +115,91 @@ class ALdatabase(object):
         :param token:
         :return:
         """
-        return None
+        ALDictDatabase.validation(
+            {
+                ALdatabase.TOKEN: token
+            }
+        )
 
     @abstractmethod
     def get_ticket_state(self, ticket: str) -> TicketState:
-        return None
+        ALDictDatabase.validation(
+            {
+                ALdatabase.TICKET: ticket
+            }
+        )
 
     @abstractmethod
     def create_account(self, email_hash: str, pin_hash: str, uuid: str):
-        return
+        ALDictDatabase.validation(
+            {
+                ALdatabase.EMAIL_HASH: email_hash,
+                ALdatabase.PIN_HASH: pin_hash,
+                ALdatabase.UUID: uuid
+            }
+        )
 
     @abstractmethod
     def create_link(self, key: str, idp: str, email_hash: str):
-        return
+        ALDictDatabase.validation(
+            {
+                ALdatabase.KEY: key,
+                ALdatabase.IDP: idp,
+                ALdatabase.EMAIL_HASH: email_hash
+            }
+        )
 
     @abstractmethod
     def remove_link(self, email_hash: str, idp: str):
-        return None
+        ALDictDatabase.validation(
+            {
+                ALdatabase.IDP: idp,
+                ALdatabase.EMAIL_HASH: email_hash
+            }
+        )
 
     @abstractmethod
     def verify_account(self, email_hash: str, pin_hash: str):
-        return None
+        ALDictDatabase.validation(
+            {
+                ALdatabase.EMAIL_HASH: email_hash,
+                ALdatabase.PIN_HASH: pin_hash
+            }
+        )
 
     @abstractmethod
     def remove_ticket_state(self, ticket: str):
-        return
+        ALDictDatabase.validation(
+            {
+                ALdatabase.TICKET: ticket
+            }
+        )
 
     @abstractmethod
     def remove_token_state(self, token: str):
-        return
+        ALDictDatabase.validation(
+            {
+                ALdatabase.TOKEN: token
+            }
+        )
 
     @abstractmethod
     def remove_account(self, email_hash: str):
-        return
+        ALDictDatabase.validation(
+            {
+                ALdatabase.EMAIL_HASH: email_hash
+            }
+        )
 
     @abstractmethod
     def change_pin(self, email_hash: str, old_pin_hash: str, new_pin_hash: str):
-        return
+        ALDictDatabase.validation(
+            {
+                ALdatabase.EMAIL_HASH: email_hash,
+                ALdatabase.OLD_PIN_HASH: old_pin_hash,
+                ALdatabase.NEW_PIN_HASH: new_pin_hash,
+            }
+        )
 
     @abstractmethod
     def db_empty(self) -> bool:
@@ -170,7 +239,7 @@ class ALDictDatabase(ALdatabase):
 
     def __init__(self):
         self.ticket = {}
-        """:type: dict[str, dict[str, str]]"""
+        """:type: dict[str, dict[str, str | timestamp]]"""
 
         self.token = {}
         """:type: dict[str, dict[str, str]]"""
@@ -192,7 +261,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#get_uuid
         """
         try:
-            base_data = super(ALDictDatabase, self).get_uuid(key)
+            super(ALDictDatabase, self).get_uuid(key)
             if key not in self.key_to_link:
                 raise ALserviceDbKeyDoNotExistsError()
             email_hash = self.key_to_link[key][ALDictDatabase.KEY_TO_LINK_EMAIL_HASH]
@@ -212,14 +281,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#save_ticket_state
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.TICKET_TICKET_PRIMARY: ticket,
-                    ALDictDatabase.TICKET_KEY: key,
-                    ALDictDatabase.TICKET_IDP: idp,
-                    ALDictDatabase.TICKET_REDIRECT_URL: redirect,
-                }
-            )
+            super(ALDictDatabase, self).save_ticket_state(ticket, key, idp, redirect)
             if ticket in self.ticket:
                 raise ALserviceDbNotUniqueTokenError()
 
@@ -240,12 +302,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#save_token_state
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.TOKEN_TOKEN_PRIMARY: token,
-                    ALDictDatabase.TOKEN_EMAIL_HASH: email_hash
-                }
-            )
+            super(ALDictDatabase, self).save_token_state(token, email_hash)
             if token in self.token:
                 raise ALserviceDbNotUniqueTokenError()
             _dict = {
@@ -263,11 +320,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#get_token_state
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.TOKEN_TOKEN_PRIMARY: token
-                }
-            )
+            super(ALDictDatabase, self).get_token_state(token)
             if token not in self.token:
                 raise ALserviceDbKeyDoNotExistsError()
             _dict = self.token[token]
@@ -285,11 +338,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#get_ticket_state
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.TICKET_TICKET_PRIMARY: ticket
-                }
-            )
+            super(ALDictDatabase, self).get_ticket_state(ticket)
             if ticket not in self.ticket:
                 raise ALserviceDbKeyDoNotExistsError()
             _dict = self.ticket[ticket]
@@ -309,13 +358,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#create_account
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY: email_hash,
-                    ALDictDatabase.ACCOUNT_PIN_HASH: pin_hash,
-                    ALDictDatabase.ACCOUNT_UUID: uuid
-                }
-            )
+            super(ALDictDatabase, self).create_account(email_hash, pin_hash, uuid)
             if email_hash in self.account:
                 raise ALserviceDbNotUniqueTokenError()
             _dict_account = {
@@ -334,13 +377,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#create_link
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.KEY_TO_LINK_KEY_PRIMARY: key,
-                    ALDictDatabase.KEY_TO_LINK_IDP: idp,
-                    ALDictDatabase.KEY_TO_LINK_EMAIL_HASH: email_hash
-                }
-            )
+            super(ALDictDatabase, self).create_link(key, idp, email_hash)
             link = self._create_link(email_hash, idp)
             self.remove_link(email_hash, idp)
             if key in self.key_to_link:
@@ -373,12 +410,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#remove_link
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.KEY_TO_LINK_IDP: idp,
-                    ALDictDatabase.KEY_TO_LINK_EMAIL_HASH: email_hash
-                }
-            )
+            super(ALDictDatabase, self).remove_link(email_hash, idp)
             link = self._create_link(email_hash, idp)
             if link in self.link_to_key:
                 del_key = self.link_to_key[link]
@@ -394,12 +426,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#verify_account
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY: email_hash,
-                    ALDictDatabase.ACCOUNT_PIN_HASH: pin_hash
-                }
-            )
+            super(ALDictDatabase, self).verify_account(email_hash, pin_hash)
             if email_hash not in self.account:
                 raise ALserviceDbKeyDoNotExistsError()
             if pin_hash != self.account[email_hash][ALDictDatabase.ACCOUNT_PIN_HASH]:
@@ -414,11 +441,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#remove_ticket_state
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.TICKET_TICKET_PRIMARY: ticket
-                }
-            )
+            super(ALDictDatabase, self).remove_ticket_state(ticket)
             if ticket in self.ticket:
                 del self.ticket[ticket]
         except Exception as error:
@@ -431,11 +454,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#remove_token_state
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.TOKEN_TOKEN_PRIMARY: token
-                }
-            )
+            super(ALDictDatabase, self).remove_token_state(token)
             if token in self.token:
                 del self.token[token]
         except Exception as error:
@@ -448,11 +467,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#remove_token_account
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY: email_hash
-                }
-            )
+            super(ALDictDatabase, self).remove_account(email_hash)
             if email_hash in self.account:
                 del self.account[email_hash]
                 _dict_account_to_link = self.account_to_link[email_hash]
@@ -470,12 +485,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#create_account
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY: email_hash,
-                    ALDictDatabase.ACCOUNT_PIN_HASH: old_pin_hash,
-                }
-            )
+            super(ALDictDatabase, self).change_pin(email_hash)
             ALDictDatabase.validation(
                 {
                     ALDictDatabase.ACCOUNT_PIN_HASH: new_pin_hash,
