@@ -87,7 +87,8 @@ class JWTHandler(object):
 
 class AccountLinking(object):
 
-    def __init__(self, db: ALdatabase, keys: list, salt: str, email_sender: Email):
+    def __init__(self, db: ALdatabase, keys: list, salt: str, email_sender_create_account: Email,
+                 email_sender_pin_recovery: Email=None):
         """
 
         :type keys: list[str]
@@ -107,7 +108,10 @@ class AccountLinking(object):
         self.salt = salt
         """:type: str"""
 
-        self.email_sender = email_sender
+        self.email_sender_create_account = email_sender_create_account
+        """:type: Email"""
+
+        self.email_sender_pin_recovery = email_sender_pin_recovery
         """:type: Email"""
 
     def get_uuid(self, key: str):
@@ -136,7 +140,7 @@ class AccountLinking(object):
         token_ticket = "%s.%s" % (token, ticket)
         email_hash = self.create_hash(email, self.salt)
         self.db.save_token_state(token, email_hash)
-        self.email_sender.send_mail(token_ticket, email)
+        self.email_sender_create_account.send_mail(token_ticket, email)
 
     def create_account_step2(self, token: str):
         tokens = token.split(".")
@@ -185,11 +189,23 @@ class AccountLinking(object):
         except Exception as error:
             raise ALserviceAuthenticationError() from error
 
-    def change_pin(self, email: str, old_pin: str, new_pin: str):
+    def change_pin_step1(self, email: str, pin: str):
         try:
             email_hash = self.create_hash(email, self.salt)
+            pin_hash = self.create_hash(pin, self.salt)
+            self.db.verify_account(email_hash, pin_hash)
+            token = AccountLinking.create_token(email_hash, self.salt)
+            self.db.save_token_state(token, email_hash)
+            self.email_sender_create_account.send_mail(token, email)
+        except Exception as error:
+            raise ALserviceAuthenticationError() from error
+
+    def change_pin_step2(self, token: str, old_pin: str, new_pin: str):
+        try:
+            email_state = self.db.get_token_state(token)
             old_pin_hash = self.create_hash(old_pin, self.salt)
+            self.db.verify_account(email_state.email_hash, old_pin_hash)
             new_pin_hash = self.create_hash(new_pin, self.salt)
-            self.db.change_pin(email_hash, old_pin_hash, new_pin_hash)
+            self.db.change_pin(email_state.email_hash, old_pin_hash, new_pin_hash)
         except Exception as error:
             raise ALserviceAuthenticationError() from error
