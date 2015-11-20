@@ -61,6 +61,11 @@ class ALdatabase(object):
         :param key: A key that uniquely identifies an Idp and the users identification on that IdP.
         :return: An accounts uuid.
         """
+        ALDictDatabase.validation(
+            {
+                ALDictDatabase.KEY_TO_LINK_KEY_PRIMARY: key
+            }
+        )
         return None
 
     @abstractmethod
@@ -187,11 +192,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#get_uuid
         """
         try:
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.KEY_TO_LINK_KEY_PRIMARY: key
-                }
-            )
+            base_data = super(ALDictDatabase, self).get_uuid(key)
             if key not in self.key_to_link:
                 raise ALserviceDbKeyDoNotExistsError()
             email_hash = self.key_to_link[key][ALDictDatabase.KEY_TO_LINK_EMAIL_HASH]
