@@ -8,7 +8,7 @@ from alservice.exception import ALserviceDbKeyDoNotExistsError, ALserviceDbUnkno
 
 
 class TicketState(object):
-    def __init__(self, timestamp, key, idp, redirect):
+    def __init__(self, timestamp: datetime, key, idp, redirect):
         """
 
         :timestamp datetime
@@ -225,7 +225,7 @@ class ALDictDatabase(ALdatabase):
                 ALDictDatabase.TICKET_IDP: idp,
                 ALDictDatabase.TICKET_KEY: key,
                 ALDictDatabase.TICKET_REDIRECT_URL: redirect,
-                ALDictDatabase.TICKET_TIMESTAMP: datetime.now
+                ALDictDatabase.TICKET_TIMESTAMP: datetime.now()
             }
             self.ticket[ticket] = _dict
         except Exception as error:
@@ -248,7 +248,7 @@ class ALDictDatabase(ALdatabase):
                 raise ALserviceDbNotUniqueTokenError()
             _dict = {
                 ALDictDatabase.TOKEN_EMAIL_HASH: email_hash,
-                ALDictDatabase.TICKET_TIMESTAMP: datetime.now
+                ALDictDatabase.TICKET_TIMESTAMP: datetime.now()
             }
             self.token[token] = _dict
         except Exception as error:
@@ -295,8 +295,8 @@ class ALDictDatabase(ALdatabase):
             idp = _dict[ALDictDatabase.TICKET_IDP]
             timestamp = _dict[ALDictDatabase.TICKET_TIMESTAMP]
             redirect = _dict[ALDictDatabase.TICKET_REDIRECT_URL]
-            token_state = TicketState(timestamp, key, idp, redirect)
-            return token_state
+            ticket_state = TicketState(timestamp, key, idp, redirect)
+            return ticket_state
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
@@ -319,7 +319,7 @@ class ALDictDatabase(ALdatabase):
             _dict_account = {
                 ALDictDatabase.ACCOUNT_PIN_HASH: pin_hash,
                 ALDictDatabase.ACCOUNT_UUID: uuid,
-                ALDictDatabase.ACCOUNT_TIMESTAMP: datetime.now
+                ALDictDatabase.ACCOUNT_TIMESTAMP: datetime.now()
             }
             self.account[email_hash] = _dict_account
         except Exception as error:

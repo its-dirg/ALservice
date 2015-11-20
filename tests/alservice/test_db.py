@@ -1,4 +1,5 @@
 import datetime
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -54,13 +55,17 @@ class TestDB():
         assert database.db_empty(), "Database must be empty to run test!"
 
         database.save_ticket_state("my_ticket", "my_key", "my_idp", "my_redirect")
+        ticket_state = database.get_ticket_state("my_ticket")
+        assert ticket_state.redirect == "my_redirect"
+        assert ticket_state.idp == "my_idp"
+        assert ticket_state.key == "my_key"
+        assert ticket_state.timestamp < datetime.now()
         _error = None
         try:
             database.save_ticket_state("my_ticket", "my_key", "my_idp", "my_redirect")
         except ALserviceDbNotUniqueTokenError as error:
             _error = error
         assert _error is not None, "Must be an ALserviceDbNotUniqueTokenError!"
-        ticket_state = database.get_ticket_state("my_ticket")
 
     @pytest.mark.parametrize("database", DATABASES)
     def test_save_token_state(self, database: ALdatabase):
