@@ -9,7 +9,7 @@ DATABASES = [ALDictDatabase()]
 """:type: list[ALdatabase]"""
 
 
-class TestConsentDB():
+class TestDB():
     @pytest.fixture(autouse=True)
     def setup(self):
         self.ticket = "ticket_123"
@@ -42,7 +42,7 @@ class TestConsentDB():
     @pytest.mark.parametrize("database", DATABASES)
     def test_get_uuid(self, database: ALdatabase):
         database.create_account("email_hash", "pin_hash", "my_uuid")
-        database.create_link("my_key", "my_idp", "my_email_hash")
+        database.create_link("my_key", "my_idp", "email_hash")
         uuid = database.get_uuid("my_key")
         assert uuid == "my_uuid", "Wrong uuid"
 

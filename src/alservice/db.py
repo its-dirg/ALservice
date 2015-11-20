@@ -299,7 +299,7 @@ class ALDictDatabase(ALdatabase):
                     ALDictDatabase.KEY_TO_LINK_EMAIL_HASH: email_hash
                 }
             )
-            link = hashlib.sha512(idp + email_hash)
+            link = hashlib.sha512(idp.encode() + email_hash.encode()).hexdigest()
             if link in self.link_to_key:
                 del_key = self.link_to_key[link]
                 del self.key_to_link[del_key]
