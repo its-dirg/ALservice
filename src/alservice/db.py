@@ -402,7 +402,7 @@ class ALDictDatabase(ALdatabase):
             )
             if email_hash not in self.account:
                 raise ALserviceDbKeyDoNotExistsError()
-            if pin_hash != self.account[ALDictDatabase.ACCOUNT_PIN_HASH]:
+            if pin_hash != self.account[email_hash][ALDictDatabase.ACCOUNT_PIN_HASH]:
                 raise ALserviceDbValueDoNotExistsError()
         except Exception as error:
             if not isinstance(error, ALserviceDbError):

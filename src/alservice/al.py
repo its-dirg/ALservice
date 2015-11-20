@@ -1,4 +1,5 @@
 from base64 import urlsafe_b64encode
+from email.header import Header
 from email.mime.text import MIMEText
 import hashlib
 import random
@@ -8,7 +9,8 @@ from uuid import uuid4
 from jwkest import jws
 from jwkest.jwt import JWT
 from alservice.db import ALdatabase
-from alservice.exception import ALserviceTokenError, ALserviceAuthenticationError
+from alservice.exception import ALserviceTokenError, ALserviceAuthenticationError, \
+    ALserviceDbKeyDoNotExistsError
 
 
 class Email(object):
@@ -37,13 +39,14 @@ class Email(object):
         message = self.message.replace(Email.TOKEN_REPLACE, token)
         message = message.replace(Email.EMAIL_VERIFY_URL_REPLACE, "%s?%s=%s" %
                                        (self.verify_url, Email.TOKEN_PARAM, token))
-        msg = MIMEText(message)
-        msg['Subject'] = self.subject
-        msg['From'] = self.email_from
+        msg = MIMEText(message, "plain", "utf-8")
+        msg['Subject'] = Header(self.subject, 'utf-8').encode()
+        msg['From'] = "\"{sender}\" <{sender}>".format(sender=self.email_from)
         msg['To'] = email_to
         s = smtplib.SMTP(self.smtp_server)
-        s.send_message(msg)
+        failed = s.sendmail(self.email_from, email_to, msg.as_string())
         s.quit()
+
 
 
 class JWTHandler(object):
@@ -59,7 +62,7 @@ class JWTHandler(object):
         jso = JWTHandler._unpack_jwt(jwt)
         idp = jso["idp"]
         id = jso["id"]
-        return hashlib.sha512(idp + id)
+        return hashlib.sha512((idp + id).encode()).hexdigest()
 
     @staticmethod
     def _verify_jwt(jwt: str, keys: list):
@@ -77,7 +80,7 @@ class JWTHandler(object):
     def _unpack_jwt(jwt: str):
         _jwt = JWT().unpack(jwt)
         jso = _jwt.payload()
-        if "id" not in jso or "attr" not in jso or "redirect_endpoint" not in jso:
+        if "id" not in jso or "idp" not in jso or "redirect_endpoint" not in jso:
             return None
         return jso
 
@@ -114,7 +117,7 @@ class AccountLinking(object):
     @staticmethod
     def create_token(value: str, salt: str):
         token = urlsafe_b64encode(
-            hashlib.sha512((value + salt + str(mktime(gmtime())) + random.getrandbits(1024))
+            hashlib.sha512((value + salt + str(mktime(gmtime())) + str(random.getrandbits(1024)))
                            .encode()).hexdigest().encode()).decode()
         return token
 
@@ -130,10 +133,10 @@ class AccountLinking(object):
 
     def create_account_step1(self, email: str, ticket: str):
         token = AccountLinking.create_token(email, self.salt)
-        token = "%s.%s" % (token, ticket)
+        token_ticket = "%s.%s" % (token, ticket)
         email_hash = self.create_hash(email, self.salt)
         self.db.save_token_state(token, email_hash)
-        self.email_sender.send_mail(token, email)
+        self.email_sender.send_mail(token_ticket, email)
 
     def create_account_step2(self, token: str):
         tokens = token.split(".")
@@ -143,14 +146,19 @@ class AccountLinking(object):
         return token
 
     def create_uuid(self):
-        uuid = AccountLinking.create_token(uuid4().urn)
-        while self.get_uuid(uuid) is not None:
-            uuid = AccountLinking.create_token(uuid4().urn)
+        uuid = AccountLinking.create_token(uuid4().urn, self.salt)
+        try:
+            while self.get_uuid(uuid):
+                uuid = AccountLinking.create_token(uuid4().urn, self.salt)
+        except ALserviceDbKeyDoNotExistsError:
+            pass
         return uuid
 
     def get_redirect_url(self, token: str):
-        tokens = token.split(".")
-        ticket_state = self.db.get_ticket_state(tokens[1])
+        ticket = token
+        if "." in ticket:
+            ticket = ticket.split(".")[1]
+        ticket_state = self.db.get_ticket_state(ticket)
         return ticket_state.redirect
 
     def create_account_step3(self, token: str, pin: str):
