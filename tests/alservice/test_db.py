@@ -25,7 +25,7 @@ class TestDB():
         try:
             database.validation(_dict)
         except ALserviceDbValidationError as error:
-            assert "key1" in error.message and "key2" in error.message, \
+            assert ("key1" in error.message and "key2" in error.message),\
                 "All keys must be in the message"
         except Exception:
             assert False, "Wrong exception"
@@ -66,6 +66,14 @@ class TestDB():
         except ALserviceDbNotUniqueTokenError as error:
             _error = error
         assert _error is not None, "Must be an ALserviceDbNotUniqueTokenError!"
+        try:
+            database.save_ticket_state(None, "", 3, 8)
+        except ALserviceDbValidationError as error:
+            assert (ALDictDatabase.TICKET_TIMESTAMP in error.message and
+                    ALDictDatabase.TICKET_KEY in error.message and
+                    ALDictDatabase.TICKET_REDIRECT_URL in error.message and
+                    ALDictDatabase.TICKET_IDP in error.message,
+                    "All keys must be in the message")
 
     @pytest.mark.parametrize("database", DATABASES)
     def test_save_token_state(self, database: ALdatabase):
