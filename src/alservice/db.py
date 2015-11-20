@@ -3,7 +3,8 @@ from datetime import datetime
 import hashlib
 
 from alservice.exception import ALserviceDbKeyDoNotExistsError, ALserviceDbUnknownError, \
-    ALserviceDbNotUniqueTokenError, ALserviceDbValidationError, ALserviceDbValueDoNotExistsError
+    ALserviceDbNotUniqueTokenError, ALserviceDbValidationError, ALserviceDbValueDoNotExistsError, \
+    ALserviceDbError
 
 
 class TicketState(object):
@@ -200,7 +201,9 @@ class ALDictDatabase(ALdatabase):
                 raise ALserviceDbUnknownError()
             return uuid
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def save_ticket_state(self, ticket: str, key: str, idp: str, redirect: str):
         """
@@ -226,7 +229,9 @@ class ALDictDatabase(ALdatabase):
             }
             self.ticket[ticket] = _dict
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def save_token_state(self, token: str, email_hash: str):
         """
@@ -247,7 +252,9 @@ class ALDictDatabase(ALdatabase):
             }
             self.token[token] = _dict
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def get_token_state(self, token: str) -> TokenState:
         """
@@ -267,7 +274,9 @@ class ALDictDatabase(ALdatabase):
             email_state = TokenState(timestamp, email_hash)
             return email_state
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def get_ticket_state(self, ticket: str) -> TicketState:
         """
@@ -289,7 +298,9 @@ class ALDictDatabase(ALdatabase):
             token_state = TicketState(timestamp, key, idp, redirect)
             return token_state
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def create_account(self, email_hash: str, pin_hash: str, uuid: str):
         """
@@ -312,7 +323,9 @@ class ALDictDatabase(ALdatabase):
             }
             self.account[email_hash] = _dict_account
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def create_link(self, key: str, idp: str, email_hash: str):
         """
@@ -345,7 +358,9 @@ class ALDictDatabase(ALdatabase):
             self.key_to_link[key] = _dict
             self.link_to_key[link] = key
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def _create_link(self, email_hash: str, idp: str):
         link = hashlib.sha512(idp.encode() + email_hash.encode()).hexdigest()
@@ -368,7 +383,9 @@ class ALDictDatabase(ALdatabase):
                 del self.key_to_link[del_key]
                 del self.link_to_key[link]
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def verify_account(self, email_hash: str, pin_hash: str):
         """
@@ -386,7 +403,9 @@ class ALDictDatabase(ALdatabase):
             if pin_hash != self.account[ALDictDatabase.ACCOUNT_PIN_HASH]:
                 raise ALserviceDbValueDoNotExistsError()
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def remove_ticket_state(self, ticket: str):
         """
@@ -401,7 +420,9 @@ class ALDictDatabase(ALdatabase):
             if ticket in self.ticket:
                 del self.ticket[ticket]
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def remove_token_state(self, token: str):
         """
@@ -416,7 +437,9 @@ class ALDictDatabase(ALdatabase):
             if token in self.token:
                 del self.token[token]
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def remove_account(self, email_hash: str):
         """
@@ -436,7 +459,9 @@ class ALDictDatabase(ALdatabase):
                     del self.key_to_link[tmp_link[ALDictDatabase.ACCOUNT_TO_LINK_LINK]]
                 del self.account_to_link[email_hash]
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def change_pin(self, email_hash: str, old_pin_hash: str, new_pin_hash: str):
         """
@@ -457,7 +482,9 @@ class ALDictDatabase(ALdatabase):
             self.verify_account(email_hash, old_pin_hash)
             self.account[email_hash][ALDictDatabase.ACCOUNT_PIN_HASH] = new_pin_hash
         except Exception as error:
-            raise ALserviceDbUnknownError() from error
+            if not isinstance(error, ALserviceDbError):
+                raise ALserviceDbUnknownError() from error
+            raise
 
     def db_empty(self) -> bool:
         """

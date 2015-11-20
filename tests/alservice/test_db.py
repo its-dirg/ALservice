@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from alservice.db import ALDictDatabase, ALdatabase
-from alservice.exception import ALserviceDbValidationError
+from alservice.exception import ALserviceDbValidationError, ALserviceDbNotUniqueTokenError
 
 DATABASES = [ALDictDatabase()]
 """:type: list[ALdatabase]"""
@@ -52,7 +52,15 @@ class TestDB():
     @pytest.mark.parametrize("database", DATABASES)
     def test_save_ticket_state(self, database: ALdatabase):
         assert database.db_empty(), "Database must be empty to run test!"
+
         database.save_ticket_state("my_ticket", "my_key", "my_idp", "my_redirect")
+        _error = None
+        try:
+            database.save_ticket_state("my_ticket", "my_key", "my_idp", "my_redirect")
+        except ALserviceDbNotUniqueTokenError as error:
+            _error = error
+        assert _error is not None, "Must be an ALserviceDbNotUniqueTokenError!"
+        ticket_state = database.get_ticket_state("my_ticket")
 
     @pytest.mark.parametrize("database", DATABASES)
     def test_save_token_state(self, database: ALdatabase):
