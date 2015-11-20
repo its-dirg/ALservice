@@ -12,7 +12,8 @@ DATABASES = [ALDictDatabase()]
 class TestDB():
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.ticket = "ticket_123"
+        for db in DATABASES:
+            db.db_clear()
 
     @pytest.mark.parametrize("database", DATABASES)
     def test_validation(self, database: ALdatabase):
@@ -41,14 +42,17 @@ class TestDB():
 
     @pytest.mark.parametrize("database", DATABASES)
     def test_get_uuid(self, database: ALdatabase):
+        assert database.db_empty(), "Database must be empty to run test!"
         database.create_account("email_hash", "pin_hash", "my_uuid")
         database.create_link("my_key", "my_idp", "email_hash")
         uuid = database.get_uuid("my_key")
+
         assert uuid == "my_uuid", "Wrong uuid"
 
     @pytest.mark.parametrize("database", DATABASES)
     def test_save_ticket_state(self, database: ALdatabase):
-        pass
+        assert database.db_empty(), "Database must be empty to run test!"
+        database.save_ticket_state("my_ticket", "my_key", "my_idp", "my_redirect")
 
     @pytest.mark.parametrize("database", DATABASES)
     def test_save_token_state(self, database: ALdatabase):
@@ -71,11 +75,11 @@ class TestDB():
         pass
 
     @pytest.mark.parametrize("database", DATABASES)
-    def test_verify_account(self, database: ALdatabase):
+    def test_remove_link(self, database: ALdatabase):
         pass
 
     @pytest.mark.parametrize("database", DATABASES)
-    def test_(self, database: ALdatabase):
+    def test_verify_account(self, database: ALdatabase):
         pass
 
     @pytest.mark.parametrize("database", DATABASES)
@@ -84,4 +88,12 @@ class TestDB():
 
     @pytest.mark.parametrize("database", DATABASES)
     def test_remove_token_state(self, database: ALdatabase):
+        pass
+
+    @pytest.mark.parametrize("database", DATABASES)
+    def test_remove_account(self, database: ALdatabase):
+        pass
+
+    @pytest.mark.parametrize("database", DATABASES)
+    def test_change_pin(self, database: ALdatabase):
         pass

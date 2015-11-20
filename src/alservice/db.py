@@ -102,7 +102,11 @@ class ALdatabase(object):
         return
 
     @abstractmethod
-    def verify_account(self, email_hash: str, pin_hash: str) -> str:
+    def remove_link(self, email_hash: str, idp: str):
+        return None
+
+    @abstractmethod
+    def verify_account(self, email_hash: str, pin_hash: str):
         return None
 
     @abstractmethod
@@ -111,6 +115,22 @@ class ALdatabase(object):
 
     @abstractmethod
     def remove_token_state(self, token: str):
+        return
+
+    @abstractmethod
+    def remove_account(self, email_hash: str):
+        return
+
+    @abstractmethod
+    def change_pin(self, email_hash: str, old_pin_hash: str, new_pin_hash: str):
+        return
+
+    @abstractmethod
+    def db_empty(self) -> bool:
+        return
+
+    @abstractmethod
+    def db_clear(self):
         return
 
 
@@ -137,6 +157,10 @@ class ALDictDatabase(ALdatabase):
     LINK_TO_KEY_LINK_PRIMARY = "link"
     LINK_TO_KEY_KEY = "key"
 
+    ACCOUNT_TO_LINK_EMAIL_HASH_PRIMARY = "email"
+    ACCOUNT_TO_LINK_KEY = "key"
+    ACCOUNT_TO_LINK_LINK = "link"
+
     def __init__(self):
         self.ticket = {}
         """:type: dict[str, dict[str, str]]"""
@@ -151,7 +175,10 @@ class ALDictDatabase(ALdatabase):
         """:type: dict[str, dict[str, str]]"""
 
         self.link_to_key = {}
-        """:type: dict[str, dict[str, str]]"""
+        """:type: dict[str, str]"""
+
+        self.account_to_link = {}
+        """:type: dict[str, list[dict[str, str]]]"""
 
     def get_uuid(self, key: str) -> str:
         """
@@ -278,12 +305,12 @@ class ALDictDatabase(ALdatabase):
             )
             if email_hash in self.account:
                 raise ALserviceDbNotUniqueTokenError()
-            _dict = {
+            _dict_account = {
                 ALDictDatabase.ACCOUNT_PIN_HASH: pin_hash,
                 ALDictDatabase.ACCOUNT_UUID: uuid,
                 ALDictDatabase.ACCOUNT_TIMESTAMP: datetime.now
             }
-            self.account[email_hash] = _dict
+            self.account[email_hash] = _dict_account
         except Exception as error:
             raise ALserviceDbUnknownError() from error
 
@@ -299,23 +326,51 @@ class ALDictDatabase(ALdatabase):
                     ALDictDatabase.KEY_TO_LINK_EMAIL_HASH: email_hash
                 }
             )
-            link = hashlib.sha512(idp.encode() + email_hash.encode()).hexdigest()
-            if link in self.link_to_key:
-                del_key = self.link_to_key[link]
-                del self.key_to_link[del_key]
-                del self.link_to_key[link]
+            link = self._create_link(email_hash, idp)
+            self.remove_link(email_hash, idp)
             if key in self.key_to_link:
                 raise ALserviceDbNotUniqueTokenError()
             _dict = {
                 ALDictDatabase.KEY_TO_LINK_IDP: idp,
                 ALDictDatabase.KEY_TO_LINK_EMAIL_HASH: email_hash
             }
+
+            _dict_account_to_link = {
+                ALDictDatabase.ACCOUNT_TO_LINK_KEY: key,
+                ALDictDatabase.ACCOUNT_TO_LINK_LINK: link,
+            }
+            if email_hash not in self.account_to_link:
+                self.account_to_link[email_hash] = []
+            self.account_to_link[email_hash].append(_dict_account_to_link)
             self.key_to_link[key] = _dict
             self.link_to_key[link] = key
         except Exception as error:
             raise ALserviceDbUnknownError() from error
 
-    def verify_account(self, email_hash: str, pin_hash: str) -> str:
+    def _create_link(self, email_hash: str, idp: str):
+        link = hashlib.sha512(idp.encode() + email_hash.encode()).hexdigest()
+        return link
+
+    def remove_link(self, email_hash: str, idp: str):
+        """
+        See ALdatabase#remove_link
+        """
+        try:
+            ALDictDatabase.validation(
+                {
+                    ALDictDatabase.KEY_TO_LINK_IDP: idp,
+                    ALDictDatabase.KEY_TO_LINK_EMAIL_HASH: email_hash
+                }
+            )
+            link = self._create_link(email_hash, idp)
+            if link in self.link_to_key:
+                del_key = self.link_to_key[link]
+                del self.key_to_link[del_key]
+                del self.link_to_key[link]
+        except Exception as error:
+            raise ALserviceDbUnknownError() from error
+
+    def verify_account(self, email_hash: str, pin_hash: str):
         """
         See ALdatabase#verify_account
         """
@@ -333,7 +388,6 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             raise ALserviceDbUnknownError() from error
 
-    @abstractmethod
     def remove_ticket_state(self, ticket: str):
         """
         See ALdatabase#remove_ticket_state
@@ -349,7 +403,6 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             raise ALserviceDbUnknownError() from error
 
-    @abstractmethod
     def remove_token_state(self, token: str):
         """
         See ALdatabase#remove_token_state
@@ -364,3 +417,64 @@ class ALDictDatabase(ALdatabase):
                 del self.token[token]
         except Exception as error:
             raise ALserviceDbUnknownError() from error
+
+    def remove_account(self, email_hash: str):
+        """
+        See ALdatabase#remove_token_account
+        """
+        try:
+            ALDictDatabase.validation(
+                {
+                    ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY: email_hash
+                }
+            )
+            if email_hash in self.account:
+                del self.account[email_hash]
+                _dict_account_to_link = self.account_to_link[email_hash]
+                for tmp_link in _dict_account_to_link:
+                    del self.link_to_key[tmp_link[ALDictDatabase.ACCOUNT_TO_LINK_LINK]]
+                    del self.key_to_link[tmp_link[ALDictDatabase.ACCOUNT_TO_LINK_LINK]]
+                del self.account_to_link[email_hash]
+        except Exception as error:
+            raise ALserviceDbUnknownError() from error
+
+    def change_pin(self, email_hash: str, old_pin_hash: str, new_pin_hash: str):
+        """
+        See ALdatabase#create_account
+        """
+        try:
+            ALDictDatabase.validation(
+                {
+                    ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY: email_hash,
+                    ALDictDatabase.ACCOUNT_PIN_HASH: old_pin_hash,
+                }
+            )
+            ALDictDatabase.validation(
+                {
+                    ALDictDatabase.ACCOUNT_PIN_HASH: new_pin_hash,
+                }
+            )
+            self.verify_account(email_hash, old_pin_hash)
+            self.account[email_hash][ALDictDatabase.ACCOUNT_PIN_HASH] = new_pin_hash
+        except Exception as error:
+            raise ALserviceDbUnknownError() from error
+
+    def db_empty(self) -> bool:
+        """
+        See ALdatabase#db_empty
+        """
+
+        return ((len(self.ticket) + len(self.token) + len(self.account) + len(self.key_to_link) +
+                 len(self.link_to_key) + len(self.account_to_link)) == 0)
+
+    def db_clear(self):
+        """
+        See ALdatabase#db_clear
+        """
+
+        self.ticket = {}
+        self.token = {}
+        self.account = {}
+        self.key_to_link = {}
+        self.link_to_key = {}
+        self.account_to_link = {}

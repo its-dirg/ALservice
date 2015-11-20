@@ -167,10 +167,21 @@ class AccountLinking(object):
         self.db.create_link(ticket_data.key, ticket_data.idp, email_data.email_hash)
 
     def link_key(self, email: str, pin: str, ticket: str):
-        email_hash = self.create_hash(email, self.salt)
-        pin_hash = self.create_hash(pin, self.salt)
-        self.db.verify_account(email_hash, pin_hash)
-        ticket_data = self.db.get_ticket_state(ticket)
-        self.db.remove_ticket_state(ticket)
-        self.db.create_link(ticket_data.key, ticket_data.idp, email_hash)
-        raise ALserviceAuthenticationError()
+        try:
+            email_hash = self.create_hash(email, self.salt)
+            pin_hash = self.create_hash(pin, self.salt)
+            self.db.verify_account(email_hash, pin_hash)
+            ticket_data = self.db.get_ticket_state(ticket)
+            self.db.remove_ticket_state(ticket)
+            self.db.create_link(ticket_data.key, ticket_data.idp, email_hash)
+        except Exception as error:
+            raise ALserviceAuthenticationError() from error
+
+    def change_pin(self, email: str, old_pin: str, new_pin: str):
+        try:
+            email_hash = self.create_hash(email, self.salt)
+            old_pin_hash = self.create_hash(old_pin, self.salt)
+            new_pin_hash = self.create_hash(new_pin, self.salt)
+            self.db.change_pin(email_hash, old_pin_hash, new_pin_hash)
+        except Exception as error:
+            raise ALserviceAuthenticationError() from error
