@@ -1,0 +1,15 @@
+SSL=True
+SERVER_CERT="./keys/server.crt"
+SERVER_KEY="./keys/server.key"
+JWT_PUB_KEY= ["./keys/satosa.pub"]
+SECRET_SESSION_KEY="fdgfds%€#&436gfjhköltfsdjglök34j5oö43ijtglkfdjgasdftglok432jtgerfd"
+PORT=8167
+HOST="127.0.0.1"
+DEBUG=True
+TICKET_TTL=600
+BABEL_DEFAULT_LOCALE='en'
+MESSAGE_TEMPLATE="message.txt"
+MESSAGE_FROM="al.service@umu.se"
+MESSAGE_SUBJECT="Account registration"
+SMTP_SERVER="smtp.umu.se"
+SALT="fg9024jk5rmfdsvp0upASDIOPUmfadsf0qw3"
