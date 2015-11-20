@@ -473,7 +473,7 @@ class ALDictDatabase(ALdatabase):
                 _dict_account_to_link = self.account_to_link[email_hash]
                 for tmp_link in _dict_account_to_link:
                     del self.link_to_key[tmp_link[ALDictDatabase.ACCOUNT_TO_LINK_LINK]]
-                    del self.key_to_link[tmp_link[ALDictDatabase.ACCOUNT_TO_LINK_LINK]]
+                    del self.key_to_link[tmp_link[ALDictDatabase.ACCOUNT_TO_LINK_KEY]]
                 del self.account_to_link[email_hash]
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
@@ -485,12 +485,7 @@ class ALDictDatabase(ALdatabase):
         See ALdatabase#create_account
         """
         try:
-            super(ALDictDatabase, self).change_pin(email_hash)
-            ALDictDatabase.validation(
-                {
-                    ALDictDatabase.ACCOUNT_PIN_HASH: new_pin_hash,
-                }
-            )
+            super(ALDictDatabase, self).change_pin(email_hash, old_pin_hash, new_pin_hash)
             self.verify_account(email_hash, old_pin_hash)
             self.account[email_hash][ALDictDatabase.ACCOUNT_PIN_HASH] = new_pin_hash
         except Exception as error:
