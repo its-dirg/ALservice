@@ -63,7 +63,7 @@ def approve(ticket):
         try:
             redirect_url = al.get_redirect_url(ticket)
             al.link_key(email, pin, ticket)
-            return redirect(redirect_url, 200)
+            return redirect(redirect_url)
         except ALserviceAuthenticationError:
             return render_template('login.mako',
                                    name="mako",
@@ -133,7 +133,7 @@ def verify_token():
     token = session["token"]
     redirect_url = al.get_redirect_url(token)
     al.create_account_step3(token, pin)
-    return redirect(redirect_url, 200)
+    return redirect(redirect_url)
 
 
 if __name__ == "__main__":
