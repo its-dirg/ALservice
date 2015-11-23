@@ -51,15 +51,13 @@ class Email(object):
 
 class JWTHandler(object):
     @staticmethod
-    def key(jwt: str, keys: list):
+    def key(jso):
         """
 
         :param jwt:
         :param keys:
         :return:
         """
-        JWTHandler._verify_jwt(jwt, keys)
-        jso = JWTHandler._unpack_jwt(jwt)
         idp = jso["idp"]
         id = jso["id"]
         return hashlib.sha512((idp + id).encode()).hexdigest()
@@ -77,7 +75,8 @@ class JWTHandler(object):
         _jw.verify_compact(jwt, keys)
 
     @staticmethod
-    def _unpack_jwt(jwt: str):
+    def unpack_jwt(jwt: str, keys: list):
+        JWTHandler._verify_jwt(jwt, keys)
         _jwt = JWT().unpack(jwt)
         jso = _jwt.payload()
         if "id" not in jso or "idp" not in jso or "redirect_endpoint" not in jso:

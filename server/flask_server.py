@@ -43,12 +43,12 @@ def get_id():
         jwt = parsed_qs["jwt"][0]
     except KeyError:
         abort(401)
-    key = JWTHandler.key(jwt, keys)
+    jso = JWTHandler.unpack_jwt(jwt, keys)
+    key = JWTHandler.key(jso)
     try:
         uuid = al.get_uuid(key)
     except ALserviceDbKeyDoNotExistsError:
         # TODO Need the idp and redirect. Using protected function
-        jso = JWTHandler._unpack_jwt(jwt)
         ticket = al.create_ticket(key, jso["idp"], jso["redirect_endpoint"])
         return ticket, 400
     return uuid, 200
