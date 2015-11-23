@@ -1,13 +1,12 @@
-from unittest.mock import MagicMock, Mock
 import pytest
+
 from alservice.al import AccountLinking, Email, JWTHandler
-from alservice.db import ALdatabase, ALDictDatabase
-from alservice.exception import ALserviceDbKeyDoNotExistsError, ALserviceTicketError, \
+from alservice.db import ALDictDatabase
+from alservice.exception import ALserviceTicketError, \
     ALserviceTokenError, ALserviceAccountExists, ALserviceAuthenticationError, ALserviceNoSuchKey
 
 
 class TestEmail(Email):
-
     def __init__(self):
         self.token = None
         self.email_to = None
@@ -18,7 +17,6 @@ class TestEmail(Email):
 
 
 class TestAL(object):
-
     @pytest.fixture(autouse=True)
     def setup(self):
         self.my_idp = "my_idp"
@@ -211,8 +209,8 @@ class TestAL(object):
                 my_id_tmp = "%s_%i" % (my_id, i)
                 my_idp_tmp = "%s_%i" % (my_idp, i)
                 jso = {
-                 "id": my_id_tmp,
-                 "idp": my_idp_tmp
+                    "id": my_id_tmp,
+                    "idp": my_idp_tmp
                 }
                 my_key_tmp = JWTHandler.key(jso)
                 uuid_1_tmp = self.al.get_uuid(my_key_tmp)
@@ -245,7 +243,8 @@ class TestAL(object):
             _error = error
         assert _error is not None
         try:
-            self.al.change_pin_step2("invalid_token", "4534j5khtfdgkjhgkjdfsh#", "my_new_pin123123#!")
+            self.al.change_pin_step2("invalid_token", "4534j5khtfdgkjhgkjdfsh#",
+                                     "my_new_pin123123#!")
         except ALserviceTokenError as error:
             _error = error
         assert _error is not None
