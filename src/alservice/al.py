@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from base64 import urlsafe_b64encode
 from email.header import Header
 from email.mime.text import MIMEText
@@ -10,10 +11,17 @@ from jwkest import jws
 from jwkest.jwt import JWT
 from alservice.db import ALdatabase
 from alservice.exception import ALserviceTokenError, ALserviceAuthenticationError, \
-    ALserviceDbKeyDoNotExistsError
+    ALserviceDbKeyDoNotExistsError, ALserviceTicketError, ALserviceDbNotUniqueTokenError, \
+    ALserviceAccountExists, ALserviceNoSuchKey
 
 
 class Email(object):
+    @abstractmethod
+    def send_mail(self, token: str, email_to: str):
+        pass
+
+
+class EmailSmtp(Email):
     TOKEN_REPLACE = "<<token>>"
     EMAIL_VERIFY_URL_REPLACE = "<<email_verify_url>>"
     TOKEN_PARAM = "token"
@@ -46,7 +54,6 @@ class Email(object):
         s = smtplib.SMTP(self.smtp_server)
         failed = s.sendmail(self.email_from, email_to, msg.as_string())
         s.quit()
-
 
 
 class JWTHandler(object):
@@ -86,7 +93,7 @@ class JWTHandler(object):
 
 class AccountLinking(object):
 
-    def __init__(self, db: ALdatabase, keys: list, salt: str, email_sender_create_account: Email,
+    def __init__(self, db: ALdatabase, salt: str, email_sender_create_account: Email,
                  email_sender_pin_recovery: Email=None):
         """
 
@@ -101,9 +108,6 @@ class AccountLinking(object):
         self.db = db
         """:type: ALdatabase"""
 
-        self.keys = keys
-        """:type: list[str]"""
-
         self.salt = salt
         """:type: str"""
 
@@ -114,7 +118,10 @@ class AccountLinking(object):
         """:type: Email"""
 
     def get_uuid(self, key: str):
-        uuid = self.db.get_uuid(key)
+        try:
+            uuid = self.db.get_uuid(key)
+        except ALserviceDbKeyDoNotExistsError as error:
+            raise ALserviceNoSuchKey() from error
         return uuid
 
     @staticmethod
@@ -135,17 +142,36 @@ class AccountLinking(object):
         return ticket
 
     def create_account_step1(self, email: str, ticket: str):
+        try:
+            self.db.get_ticket_state(ticket)
+        except ALserviceDbKeyDoNotExistsError as error:
+            raise ALserviceTicketError() from error
         token = AccountLinking.create_token(email, self.salt)
         token_ticket = "%s.%s" % (token, ticket)
         email_hash = self.create_hash(email, self.salt)
         self.db.save_token_state(token, email_hash)
         self.email_sender_create_account.send_mail(token_ticket, email)
 
-    def create_account_step2(self, token: str):
-        tokens = token.split(".")
-        email_state = self.db.get_token_state(tokens[0])
-        if email_state is None:
+    @staticmethod
+    def _split_token(token):
+        try:
+            tokens = token.split(".")
+        except Exception as error:
+            raise ALserviceTokenError() from error
+        if tokens is None or len(tokens) != 2:
             raise ALserviceTokenError()
+        return tokens
+
+    def create_account_step2(self, token: str):
+        tokens = AccountLinking._split_token(token)
+        try:
+            self.db.get_ticket_state(tokens[1])
+        except ALserviceDbKeyDoNotExistsError as error:
+            raise ALserviceTicketError() from error
+        try:
+            email_state = self.db.get_token_state(tokens[0])
+        except ALserviceDbKeyDoNotExistsError as error:
+            raise ALserviceTokenError() from error
         return token
 
     def create_uuid(self):
@@ -153,7 +179,7 @@ class AccountLinking(object):
         try:
             while self.get_uuid(uuid):
                 uuid = AccountLinking.create_token(uuid4().urn, self.salt)
-        except ALserviceDbKeyDoNotExistsError:
+        except ALserviceNoSuchKey:
             pass
         return uuid
 
@@ -164,18 +190,30 @@ class AccountLinking(object):
         ticket_state = self.db.get_ticket_state(ticket)
         return ticket_state.redirect
 
-    def create_account_step3(self, token: str, pin: str):
-        tokens = token.split(".")
-        email_data = self.db.get_token_state(tokens[0])
-        if email_data is None:
-            raise ALserviceTokenError()
-        pin_hash = self.create_hash(pin, self.salt)
-        self.db.remove_token_state(tokens[0])
-        ticket_data = self.db.get_ticket_state(tokens[1])
+    def create_account_step3(self, token: str, pin: str=""):
+        tokens = AccountLinking._split_token(token)
+        try:
+            email_state = self.db.get_token_state(tokens[0])
+        except ALserviceDbKeyDoNotExistsError as error:
+            raise ALserviceTokenError() from error
+        pin_hash = None
+        if pin is not None:
+            pin_hash = self.create_hash(pin, self.salt)
+        try:
+            ticket_state = self.db.get_ticket_state(tokens[1])
+        except ALserviceDbKeyDoNotExistsError as error:
+            raise ALserviceTicketError() from error
         self.db.remove_ticket_state(tokens[1])
+        self.db.remove_token_state(tokens[0])
         uuid = self.create_uuid()
-        self.db.create_account(email_data.email_hash, pin_hash, uuid)
-        self.db.create_link(ticket_data.key, ticket_data.idp, email_data.email_hash)
+        try:
+            self.db.create_account(email_state.email_hash, pin_hash, uuid)
+        except ALserviceDbNotUniqueTokenError as error:
+            raise ALserviceAccountExists() from error
+        try:
+            self.db.create_link(ticket_state.key, ticket_state.idp, email_state.email_hash)
+        except ALserviceDbNotUniqueTokenError as error:
+            raise ALserviceAccountExists() from error
 
     def link_key(self, email: str, pin: str, ticket: str):
         try:

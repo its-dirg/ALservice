@@ -8,6 +8,18 @@ class ALserviceError(Exception):
         self.message = message
 
 
+class ALserviceNoSuchKey(ALserviceError):
+    pass
+
+
+class ALserviceAccountExists(ALserviceError):
+    pass
+
+
+class ALserviceTicketError(ALserviceError):
+    pass
+
+
 class ALserviceTokenError(ALserviceError):
     pass
 

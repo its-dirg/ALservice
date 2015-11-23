@@ -8,7 +8,7 @@ from flask import abort
 from flask import request
 from flask import session
 from flask import redirect
-from alservice.al import AccountLinking, JWTHandler, Email
+from alservice.al import AccountLinking, JWTHandler, EmailSmtp
 from alservice.db import ALDictDatabase
 from alservice.exception import ALserviceAuthenticationError, ALserviceTokenError, \
     ALserviceDbKeyDoNotExistsError
@@ -161,7 +161,7 @@ if __name__ == "__main__":
                                               app.config['HOST'],
                                               app.config['PORT'])
 
-    email_sender = Email(message_subject, message, message_from, smtp_server, verify_url)
+    email_sender = EmailSmtp(message_subject, message, message_from, smtp_server, verify_url)
     al = AccountLinking(data_base, keys, salt, email_sender)
 
     app.secret_key = app.config['SECRET_SESSION_KEY']
