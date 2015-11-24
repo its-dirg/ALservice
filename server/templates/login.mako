@@ -5,7 +5,7 @@
 
 % if login_failed_message:
     <div class="alert alert-danger" role="alert">
-        <p>Wrong User and/or password</p>
+        <p>${_("USER_PASSWORD_ERROR")}</p>
     </div>
 % endif
 

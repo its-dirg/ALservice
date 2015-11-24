@@ -24,8 +24,6 @@ class Email(object):
 
 class EmailSmtp(Email):
     TOKEN_REPLACE = "<<token>>"
-    EMAIL_VERIFY_URL_REPLACE = "<<email_verify_url>>"
-    TOKEN_PARAM = "token"
 
     def __init__(self, subject: str, message: str, email_from: str, smtp_server: str,
                  verify_url: str):
@@ -45,9 +43,7 @@ class EmailSmtp(Email):
         """:type: str"""
 
     def send_mail(self, token: str, email_to: str):
-        message = self.message.replace(Email.TOKEN_REPLACE, token)
-        message = message.replace(Email.EMAIL_VERIFY_URL_REPLACE, "%s?%s=%s" %
-                                       (self.verify_url, Email.TOKEN_PARAM, token))
+        message = self.message.replace(EmailSmtp.TOKEN_REPLACE, token)
         msg = MIMEText(message, "plain", "utf-8")
         msg['Subject'] = Header(self.subject, 'utf-8').encode()
         msg['From'] = "\"{sender}\" <{sender}>".format(sender=self.email_from)
