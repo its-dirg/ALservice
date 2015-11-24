@@ -5,6 +5,7 @@ from email.mime.text import MIMEText
 import hashlib
 import random
 import smtplib
+import re
 from time import mktime, gmtime
 from uuid import uuid4
 from jwkest import jws
@@ -12,7 +13,7 @@ from jwkest.jwt import JWT
 from alservice.db import ALdatabase
 from alservice.exception import ALserviceTokenError, ALserviceAuthenticationError, \
     ALserviceDbKeyDoNotExistsError, ALserviceTicketError, ALserviceDbNotUniqueTokenError, \
-    ALserviceAccountExists, ALserviceNoSuchKey
+    ALserviceAccountExists, ALserviceNoSuchKey, ALserviceNotAValidPin
 
 
 class Email(object):
@@ -94,7 +95,7 @@ class JWTHandler(object):
 class AccountLinking(object):
 
     def __init__(self, db: ALdatabase, salt: str, email_sender_create_account: Email,
-                 email_sender_pin_recovery: Email=None):
+                 email_sender_pin_recovery: Email=None, pin_verify: str=None, pin_empty: bool=True):
         """
 
         :type keys: list[str]
@@ -104,6 +105,12 @@ class AccountLinking(object):
         :param ticket_ttl: How long the ticket should live in seconds.
         :return:
         """
+        self.pin_verify = None
+        if pin_verify is not None:
+            self.pin_verify = re.compile(pin_verify)
+
+        self.pin_empty = pin_empty
+        """:type: str"""
 
         self.db = db
         """:type: ALdatabase"""
@@ -116,6 +123,15 @@ class AccountLinking(object):
 
         self.email_sender_pin_recovery = email_sender_pin_recovery
         """:type: Email"""
+
+    def verify_pin(self, pin):
+        if pin is None:
+            raise ALserviceNotAValidPin()
+        if self.pin_empty and len(pin) == 0:
+            return
+        if self.pin_verify is None or self.pin_verify.match(pin):
+            return
+        raise ALserviceNotAValidPin()
 
     def get_uuid(self, key: str):
         try:
@@ -191,6 +207,7 @@ class AccountLinking(object):
         return ticket_state.redirect
 
     def create_account_step3(self, token: str, pin: str=""):
+        self.verify_pin(pin)
         tokens = AccountLinking._split_token(token)
         try:
             email_state = self.db.get_token_state(tokens[0])
@@ -239,6 +256,7 @@ class AccountLinking(object):
 
     def change_pin_step2(self, token: str, old_pin: str, new_pin: str):
         try:
+            self.verify_pin(new_pin)
             email_state = self.db.get_token_state(token)
             old_pin_hash = self.create_hash(old_pin, self.salt)
             self.db.verify_account(email_state.email_hash, old_pin_hash)

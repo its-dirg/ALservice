@@ -162,7 +162,8 @@ if __name__ == "__main__":
                                               app.config['PORT'])
 
     email_sender = EmailSmtp(message_subject, message, message_from, smtp_server, verify_url)
-    al = AccountLinking(data_base, keys, salt, email_sender)
+    al = AccountLinking(data_base, keys, salt, email_sender, app.config["PIN_CHECK"],
+                        app.config["PIN_EMPTY"])
 
     app.secret_key = app.config['SECRET_SESSION_KEY']
     app.run(host=app.config['HOST'], port=app.config['PORT'], debug=app.config['DEBUG'],

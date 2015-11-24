@@ -12,4 +12,6 @@ MESSAGE_TEMPLATE="message.txt"
 MESSAGE_FROM="al.service@umu.se"
 MESSAGE_SUBJECT="Account registration"
 SMTP_SERVER="smtp.umu.se"
+PIN_CHECK="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{6,20})"
+PIN_EMPTY=True
 SALT="fg9024jk5rmfdsvp0upASDIOPUmfadsf0qw3"

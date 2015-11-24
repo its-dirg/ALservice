@@ -3,7 +3,8 @@ import pytest
 from alservice.al import AccountLinking, Email, JWTHandler
 from alservice.db import ALDictDatabase
 from alservice.exception import ALserviceTicketError, \
-    ALserviceTokenError, ALserviceAccountExists, ALserviceAuthenticationError, ALserviceNoSuchKey
+    ALserviceTokenError, ALserviceAccountExists, ALserviceAuthenticationError, ALserviceNoSuchKey, \
+    ALserviceNotAValidPin
 
 
 class TestEmail(Email):
@@ -29,9 +30,11 @@ class TestAL(object):
         self.al = AccountLinking(db=self.db,
                                  salt="my_salt",
                                  email_sender_create_account=TestEmail(),
-                                 email_sender_pin_recovery=TestEmail())
+                                 email_sender_pin_recovery=TestEmail(),
+                                 pin_verify="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{6,20})",
+                                 pin_empty=True)
 
-    @pytest.mark.parametrize("pin", ["", "1234", "ALiteBitHarder#2"])
+    @pytest.mark.parametrize("pin", ["", "#NotSoEasy1", "ALiteBitHarder#2!435345#fdgdfg"])
     def test_create_account_flow(self, pin):
         _error = None
         try:
@@ -92,7 +95,7 @@ class TestAL(object):
         uuid_2 = self.al.get_uuid(self.my_key)
         assert uuid_1 == uuid_2
 
-    @pytest.mark.parametrize("pin", ["", "1234", "ALiteBitHarder#2"])
+    @pytest.mark.parametrize("pin", ["", "#NotSoEasy1", "ALiteBitHarder#2!435345#fdgdfg"])
     def test_change_account_linking(self, pin):
         ticket = self.al.create_ticket(self.my_key, self.my_idp, "my_redirect")
         self.al.create_account_step1("my_email", ticket)
@@ -138,7 +141,7 @@ class TestAL(object):
             _error = error
         assert _error is not None
 
-    @pytest.mark.parametrize("pin", ["", "1234", "ALiteBitHarder#2"])
+    @pytest.mark.parametrize("pin", ["", "#NotSoEasy1", "ALiteBitHarder#2!435345#fdgdfg"])
     def test_duplicate_key(self, pin):
         ticket = self.al.create_ticket(self.my_key, self.my_idp, "my_redirect")
         self.al.create_account_step1("my_email", ticket)
@@ -254,3 +257,31 @@ class TestAL(object):
         uuid_1 = self.al.get_uuid("my_new_key")
         uuid_2 = self.al.get_uuid("my_new_key")
         assert uuid_1 == uuid_2
+
+    def test_pin(self):
+        _error = None
+        try:
+            self.al.verify_pin("NotOK")
+        except ALserviceNotAValidPin as error:
+            _error = error
+        assert _error is not None
+        _error = None
+        try:
+            self.al.verify_pin(None)
+        except ALserviceNotAValidPin as error:
+            _error = error
+        assert _error is not None
+        self.al.verify_pin("")
+        self.al.verify_pin("aP1n##")
+        self.al = AccountLinking(db=self.db,
+                                 salt="my_salt",
+                                 email_sender_create_account=TestEmail(),
+                                 email_sender_pin_recovery=TestEmail(),
+                                 pin_verify="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{6,20})",
+                                 pin_empty=False)
+        _error = None
+        try:
+            self.al.verify_pin("")
+        except ALserviceNotAValidPin as error:
+            _error = error
+        assert _error is not None
