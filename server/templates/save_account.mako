@@ -5,5 +5,5 @@
 
 <form class="form-horizontal" role="form" name="create_account" action="/save_account" method="POST">
     <input type="password" class="form-control" placeholder=${_("PIN")} name="pin">
-    <button name="save" id="save_button" class="btn btn-default" type="submit">${_('save and approve')}</button>
+    <button name="save" id="save_button" class="btn btn-default" type="submit">${_('Save and approve')}</button>
 </form>

@@ -27,12 +27,23 @@ babel = Babel(app)
 
 @babel.localeselector
 def get_locale():
-    return request.accept_languages.best_match(['sv', 'en', "sv_se"])
-
+    try:
+        return session["language"]
+    except:
+        pass
 
 @app.route("/static/<path:path>")
 def get_static(path):
     return send_from_directory('', path)
+
+
+def change_language():
+    if "language" not in session:
+        session["language"] = request.accept_languages.best_match(['sv', 'en'])
+    if ("lang" in request.form):
+        session["language"] = request.form["lang"]
+        return True
+    return False
 
 
 @app.route("/get_id")
@@ -56,75 +67,79 @@ def get_id():
 
 @app.route("/approve/<ticket>", methods=['POST', 'GET'])
 def approve(ticket):
-    session["ticket"] = ticket
-    if request.method == 'POST':
-        email = request.form["email"]
-        pin = request.form["pin"]
-        try:
-            redirect_url = al.get_redirect_url(ticket)
-            al.link_key(email, pin, ticket)
-            return redirect(redirect_url, 200)
-        except ALserviceAuthenticationError:
-            return render_template('login.mako',
-                                   name="mako",
-                                   form_action='/approve/%s' % ticket,
-                                   ticket=ticket,
-                                   login_failed_message=True,
-                                   language=request.accept_languages.best_match(['sv', 'en']))
+    if not change_language():
+        session["ticket"] = ticket
+        if request.method == 'POST':
+            email = request.form["email"]
+            pin = request.form["pin"]
+            try:
+                redirect_url = al.get_redirect_url(ticket)
+                al.link_key(email, pin, ticket)
+                return redirect(redirect_url)
+            except ALserviceAuthenticationError:
+                return render_template('login.mako',
+                                       name="mako",
+                                       form_action='/approve/%s' % ticket,
+                                       ticket=ticket,
+                                       login_failed_message=True,
+                                       language=request.accept_languages.best_match(['sv', 'en']))
 
     return render_template('login.mako',
                            name="mako",
                            form_action='/approve/%s' % ticket,
                            ticket=ticket,
                            login_failed_message=False,
-                           language=request.accept_languages.best_match(['sv', 'en']))
+                           language=session["language"])
 
 
 @app.route("/create_account", methods=["POST"])
 def create_account():
+    change_language()
     return render_template('create_account.mako',
                            name="mako",
                            form_action='/create_account',
-                           language=request.accept_languages.best_match(['sv', 'en']))
+                           language=session["language"])
 
 
 @app.route("/send_token", methods=["POST", "GET"])
 def send_token():
-    email = None
-    ticket = None
-    try:
+    if not change_language():
+        email = None
+        ticket = None
         try:
-            email = request.form["email"]
-            session["email"] = email
+            try:
+                email = request.form["email"]
+                session["email"] = email
+            except KeyError:
+                email = session["email"]
+            ticket = session["ticket"]
         except KeyError:
-            email = session["email"]
-        ticket = session["ticket"]
-    except KeyError:
-        abort(401)
-    al.create_account_step1(email, ticket)
+            abort(401)
+        al.create_account_step1(email, ticket)
     return render_template("token_was_sent.mako",
                            name="mako",
                            form_action='/send_token',
-                           email=email,
-                           language=request.accept_languages.best_match(['sv', 'en']))
+                           email=session["email"],
+                           language=session["language"])
 
 
-@app.route("/verify_token")
+@app.route("/verify_token", methods=["POST", "GET"])
 def add_pin():
-    parsed_qs = parse_qs(request.query_string.decode())
-    if "token" in parsed_qs:
-        session["token"] = parsed_qs["token"][0]
+    if not change_language():
+        parsed_qs = parse_qs(request.query_string.decode())
+        if "token" in parsed_qs:
+            session["token"] = parsed_qs["token"][0]
 
-    try:
-        token = session["token"]
-        al.create_account_step2(token)
-    except ALserviceTokenError or KeyError:
-        abort(401)
+        try:
+            token = session["token"]
+            al.create_account_step2(token)
+        except ALserviceTokenError or KeyError:
+            abort(401)
 
     return render_template("save_account.mako",
                            name="mako",
-                           form_action='/add_pin_account',
-                           language=request.accept_languages.best_match(['sv', 'en']))
+                           form_action='/verify_token',
+                           language=session["language"])
 
 
 @app.route("/save_account", methods=["POST"])
@@ -133,7 +148,7 @@ def verify_token():
     token = session["token"]
     redirect_url = al.get_redirect_url(token)
     al.create_account_step3(token, pin)
-    return redirect(redirect_url, 200)
+    return redirect(redirect_url)
 
 
 if __name__ == "__main__":
