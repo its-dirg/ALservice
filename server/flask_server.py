@@ -8,7 +8,7 @@ from flask import abort
 from flask import request
 from flask import session
 from flask import redirect
-from alservice.al import AccountLinking, JWTHandler, Email
+from alservice.al import AccountLinking, JWTHandler, EmailSmtp
 from alservice.db import ALDictDatabase
 from alservice.exception import ALserviceAuthenticationError, ALserviceTokenError, \
     ALserviceDbKeyDoNotExistsError
@@ -82,7 +82,7 @@ def approve(ticket):
                                        form_action='/approve/%s' % ticket,
                                        ticket=ticket,
                                        login_failed_message=True,
-                                       language=request.accept_languages.best_match(['sv', 'en']))
+                                       language=session["language"])
 
     return render_template('login.mako',
                            name="mako",
@@ -176,8 +176,9 @@ if __name__ == "__main__":
                                               app.config['HOST'],
                                               app.config['PORT'])
 
-    email_sender = Email(message_subject, message, message_from, smtp_server, verify_url)
-    al = AccountLinking(data_base, keys, salt, email_sender)
+    email_sender = EmailSmtp(message_subject, message, message_from, smtp_server, verify_url)
+    al = AccountLinking(data_base, keys, salt, email_sender, app.config["PIN_CHECK"],
+                        app.config["PIN_EMPTY"])
 
     app.secret_key = app.config['SECRET_SESSION_KEY']
     app.run(host=app.config['HOST'], port=app.config['PORT'], debug=app.config['DEBUG'],

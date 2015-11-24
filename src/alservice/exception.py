@@ -1,4 +1,6 @@
-__author__ = 'haho0032'
+"""
+All exceptions for the account linking service.
+"""
 
 
 class ALserviceError(Exception):
@@ -6,6 +8,22 @@ class ALserviceError(Exception):
     def __init__(self, message=None, *args, **kwargs):
         super(ALserviceError).__init__(*args, **kwargs)
         self.message = message
+
+
+class ALserviceNotAValidPin(ALserviceError):
+    pass
+
+
+class ALserviceNoSuchKey(ALserviceError):
+    pass
+
+
+class ALserviceAccountExists(ALserviceError):
+    pass
+
+
+class ALserviceTicketError(ALserviceError):
+    pass
 
 
 class ALserviceTokenError(ALserviceError):
