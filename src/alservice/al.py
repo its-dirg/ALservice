@@ -104,7 +104,6 @@ class AccountLinking(object):
         :param ticket_ttl: How long the ticket should live in seconds.
         :return:
         """
-        LOGGER.error("WHAT THE F€%#%K")
         self.pin_verify = None
         if pin_verify is not None:
             self.pin_verify = re.compile(pin_verify)
