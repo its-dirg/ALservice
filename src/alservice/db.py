@@ -1,10 +1,12 @@
 from abc import abstractmethod
 from datetime import datetime
 import hashlib
-
+import logging
 from alservice.exception import ALserviceDbKeyDoNotExistsError, ALserviceDbUnknownError, \
     ALserviceDbNotUniqueTokenError, ALserviceDbValidationError, ALserviceDbValueDoNotExistsError, \
     ALserviceDbError
+
+LOGGER = logging.getLogger(__name__)
 
 
 class TicketState(object):
@@ -62,6 +64,8 @@ class ALdatabase(object):
                 elif attributes[attr] is None or len(attributes[attr]) <= 0:
                     validation_message += "The type of %s must be string." % attr
         if len(validation_message) > 0:
+            LOGGER.error("Attributes cannot be saved to the database since they are invalid. %s",
+                         validation_message)
             raise ALserviceDbValidationError(validation_message)
 
     @abstractmethod
@@ -269,11 +273,13 @@ class ALDictDatabase(ALdatabase):
                 raise ALserviceDbKeyDoNotExistsError()
             uuid = self.account[email_hash][ALDictDatabase.ACCOUNT_UUID]
             if uuid is None:
+                LOGGER.critical("Could not find a uuid.")
                 raise ALserviceDbUnknownError()
             return uuid
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while getting uuid.")
             raise
 
     def save_ticket_state(self, ticket: str, key: str, idp: str, redirect: str):
@@ -283,6 +289,7 @@ class ALDictDatabase(ALdatabase):
         try:
             super(ALDictDatabase, self).save_ticket_state(ticket, key, idp, redirect)
             if ticket in self.ticket:
+                LOGGER.error("Duplicate tickets (%s) are not allowed!" % ticket)
                 raise ALserviceDbNotUniqueTokenError()
 
             _dict = {
@@ -295,6 +302,7 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while saving ticket.")
             raise
 
     def save_token_state(self, token: str, email_hash: str):
@@ -304,6 +312,7 @@ class ALDictDatabase(ALdatabase):
         try:
             super(ALDictDatabase, self).save_token_state(token, email_hash)
             if token in self.token:
+                LOGGER.error("Duplicate tokens (%s) are not allowed!" % token)
                 raise ALserviceDbNotUniqueTokenError()
             _dict = {
                 ALDictDatabase.TOKEN_EMAIL_HASH: email_hash,
@@ -313,6 +322,7 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while saving token state.")
             raise
 
     def get_token_state(self, token: str) -> TokenState:
@@ -322,6 +332,7 @@ class ALDictDatabase(ALdatabase):
         try:
             super(ALDictDatabase, self).get_token_state(token)
             if token not in self.token:
+                LOGGER.warn("Token (%s) is not in the database." % token)
                 raise ALserviceDbKeyDoNotExistsError()
             _dict = self.token[token]
             email_hash = _dict[ALDictDatabase.TOKEN_EMAIL_HASH]
@@ -331,6 +342,7 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while getting token state.")
             raise
 
     def get_ticket_state(self, ticket: str) -> TicketState:
@@ -340,6 +352,7 @@ class ALDictDatabase(ALdatabase):
         try:
             super(ALDictDatabase, self).get_ticket_state(ticket)
             if ticket not in self.ticket:
+                LOGGER.warn("Ticket (%s) is not in the database." % ticket)
                 raise ALserviceDbKeyDoNotExistsError()
             _dict = self.ticket[ticket]
             key = _dict[ALDictDatabase.TICKET_KEY]
@@ -351,6 +364,7 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while getting ticket state.")
             raise
 
     def create_account(self, email_hash: str, pin_hash: str, uuid: str):
@@ -369,6 +383,7 @@ class ALDictDatabase(ALdatabase):
             self.account[email_hash] = _dict_account
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
+                LOGGER.exception("Unkown error while creating account.")
                 raise ALserviceDbUnknownError() from error
             raise
 
@@ -381,6 +396,7 @@ class ALDictDatabase(ALdatabase):
             link = self._create_link(email_hash, idp)
             self.remove_link(email_hash, idp)
             if key in self.key_to_link:
+                LOGGER.error("Unknown key (%s) in key_to_link." % key)
                 raise ALserviceDbNotUniqueTokenError()
             _dict = {
                 ALDictDatabase.KEY_TO_LINK_IDP: idp,
@@ -399,6 +415,7 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while creating a link.")
             raise
 
     def _create_link(self, email_hash: str, idp: str):
@@ -419,6 +436,7 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while removing a link.")
             raise
 
     def verify_account(self, email_hash: str, pin_hash: str):
@@ -430,10 +448,12 @@ class ALDictDatabase(ALdatabase):
             if email_hash not in self.account:
                 raise ALserviceDbKeyDoNotExistsError()
             if pin_hash != self.account[email_hash][ALDictDatabase.ACCOUNT_PIN_HASH]:
+                LOGGER.error("Not a correct pin!")
                 raise ALserviceDbValueDoNotExistsError()
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while verifying account.")
             raise
 
     def remove_ticket_state(self, ticket: str):
@@ -447,6 +467,7 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while removing ticket state.")
             raise
 
     def remove_token_state(self, token: str):
@@ -460,6 +481,7 @@ class ALDictDatabase(ALdatabase):
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
                 raise ALserviceDbUnknownError() from error
+            LOGGER.exception("Unkown error while removing token state.")
             raise
 
     def remove_account(self, email_hash: str):
@@ -477,6 +499,7 @@ class ALDictDatabase(ALdatabase):
                 del self.account_to_link[email_hash]
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
+                LOGGER.exception("Unkown error while removing account.")
                 raise ALserviceDbUnknownError() from error
             raise
 
@@ -490,6 +513,7 @@ class ALDictDatabase(ALdatabase):
             self.account[email_hash][ALDictDatabase.ACCOUNT_PIN_HASH] = new_pin_hash
         except Exception as error:
             if not isinstance(error, ALserviceDbError):
+                LOGGER.exception("Unkown error while changing pin.")
                 raise ALserviceDbUnknownError() from error
             raise
 

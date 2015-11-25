@@ -1,3 +1,5 @@
+import logging
+from logging.handlers import RotatingFileHandler
 from flask.ext.babel import Babel
 from flask.ext.mako import MakoTemplates, render_template
 from flask.helpers import send_from_directory
@@ -15,13 +17,6 @@ from alservice.exception import ALserviceAuthenticationError, ALserviceTokenErro
 from urllib.parse import parse_qs
 
 app = Flask(__name__, static_folder='static')
-app.config.from_pyfile("settings.cfg")
-mako = MakoTemplates()
-mako.init_app(app)
-app._mako_lookup = TemplateLookup(directories=["templates"],
-                                  input_encoding='utf-8', output_encoding='utf-8',
-                                  imports=["from flask.ext.babel import gettext as _"])
-
 babel = Babel(app)
 
 
@@ -174,7 +169,19 @@ def verify_pin():
 
 if __name__ == "__main__":
     import ssl
-
+    app.config.from_pyfile("settings.cfg")
+    LOGGER = logging.getLogger("alservice")
+    hdlr = logging.FileHandler(app.config["LOG_FILE"])
+    base_formatter = logging.Formatter("[%(asctime)-19.19s] [%(levelname)-5.5s]: %(message)s")
+    hdlr.setLevel(app.config["LOG_LEVEL"])
+    hdlr.setFormatter(base_formatter)
+    LOGGER.addHandler(hdlr)
+    LOGGER.setLevel(logging.DEBUG)
+    mako = MakoTemplates()
+    mako.init_app(app)
+    app._mako_lookup = TemplateLookup(directories=["templates"],
+                                      input_encoding='utf-8', output_encoding='utf-8',
+                                      imports=["from flask.ext.babel import gettext as _"])
     context = None
     if app.config['SSL']:
         context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)

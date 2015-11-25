@@ -3,6 +3,7 @@ from base64 import urlsafe_b64encode
 from email.header import Header
 from email.mime.text import MIMEText
 import hashlib
+import logging
 import random
 import smtplib
 import re
@@ -20,6 +21,8 @@ class Email(object):
     @abstractmethod
     def send_mail(self, token: str, email_to: str):
         pass
+
+LOGGER = logging.getLogger(__name__)
 
 
 class EmailSmtp(Email):
@@ -101,6 +104,7 @@ class AccountLinking(object):
         :param ticket_ttl: How long the ticket should live in seconds.
         :return:
         """
+        LOGGER.error("WHAT THE F€%#%K")
         self.pin_verify = None
         if pin_verify is not None:
             self.pin_verify = re.compile(pin_verify)
@@ -122,17 +126,20 @@ class AccountLinking(object):
 
     def verify_pin(self, pin):
         if pin is None:
+            LOGGER.warn("User entered wrong pin!")
             raise ALserviceNotAValidPin()
         if self.pin_empty and len(pin) == 0:
             return
         if self.pin_verify is None or self.pin_verify.match(pin):
             return
+        LOGGER.warn("User entered wrong pin!")
         raise ALserviceNotAValidPin()
 
     def get_uuid(self, key: str):
         try:
             uuid = self.db.get_uuid(key)
         except ALserviceDbKeyDoNotExistsError as error:
+            LOGGER.info("Key (%s) not existing in database, user must link this account!", key)
             raise ALserviceNoSuchKey() from error
         return uuid
 
@@ -157,6 +164,7 @@ class AccountLinking(object):
         try:
             self.db.get_ticket_state(ticket)
         except ALserviceDbKeyDoNotExistsError as error:
+            LOGGER.exception("Ticket is missing (%s)!" % ticket)
             raise ALserviceTicketError() from error
         token = AccountLinking.create_token(email, self.salt)
         token_ticket = "%s.%s" % (token, ticket)
@@ -169,8 +177,10 @@ class AccountLinking(object):
         try:
             tokens = token.split(".")
         except Exception as error:
+            LOGGER.exception("Incorrect token (%s)!" % token)
             raise ALserviceTokenError() from error
         if tokens is None or len(tokens) != 2:
+            LOGGER.exception("Incorrect token (%s)!" % token)
             raise ALserviceTokenError()
         return tokens
 
@@ -179,10 +189,12 @@ class AccountLinking(object):
         try:
             self.db.get_ticket_state(tokens[1])
         except ALserviceDbKeyDoNotExistsError as error:
+            LOGGER.exception("Incorrect ticket (%s)!" % tokens[1])
             raise ALserviceTicketError() from error
         try:
             email_state = self.db.get_token_state(tokens[0])
         except ALserviceDbKeyDoNotExistsError as error:
+            LOGGER.exception("Incorrect token (%s)!" % tokens[0])
             raise ALserviceTokenError() from error
         return token
 
@@ -208,6 +220,7 @@ class AccountLinking(object):
         try:
             email_state = self.db.get_token_state(tokens[0])
         except ALserviceDbKeyDoNotExistsError as error:
+            LOGGER.exception("Incorrect ticket (%s)!" % tokens[0])
             raise ALserviceTokenError() from error
         pin_hash = None
         if pin is not None:
@@ -215,6 +228,7 @@ class AccountLinking(object):
         try:
             ticket_state = self.db.get_ticket_state(tokens[1])
         except ALserviceDbKeyDoNotExistsError as error:
+            LOGGER.exception("Incorrect ticket (%s)!" % tokens[1])
             raise ALserviceTicketError() from error
         self.db.remove_ticket_state(tokens[1])
         self.db.remove_token_state(tokens[0])
@@ -222,10 +236,12 @@ class AccountLinking(object):
         try:
             self.db.create_account(email_state.email_hash, pin_hash, uuid)
         except ALserviceDbNotUniqueTokenError as error:
+            LOGGER.exception("Incorrect token (%s)" % token)
             raise ALserviceAccountExists() from error
         try:
             self.db.create_link(ticket_state.key, ticket_state.idp, email_state.email_hash)
         except ALserviceDbNotUniqueTokenError as error:
+            LOGGER.exception("Incorrect token (%s)" % token)
             raise ALserviceAccountExists() from error
 
     def link_key(self, email: str, pin: str, ticket: str):
@@ -237,6 +253,7 @@ class AccountLinking(object):
             self.db.remove_ticket_state(ticket)
             self.db.create_link(ticket_data.key, ticket_data.idp, email_hash)
         except Exception as error:
+            LOGGER.exception("User is not authentication due to an unknown error.")
             raise ALserviceAuthenticationError() from error
 
     def change_pin_step1(self, email: str, pin: str):
@@ -248,6 +265,7 @@ class AccountLinking(object):
             self.db.save_token_state(token, email_hash)
             self.email_sender_create_account.send_mail(token, email)
         except Exception as error:
+            LOGGER.exception("Unknown error while changing pin.")
             raise ALserviceAuthenticationError() from error
 
     def change_pin_step2(self, token: str, old_pin: str, new_pin: str):
@@ -259,4 +277,5 @@ class AccountLinking(object):
             new_pin_hash = self.create_hash(new_pin, self.salt)
             self.db.change_pin(email_state.email_hash, old_pin_hash, new_pin_hash)
         except Exception as error:
+            LOGGER.exception("Unknown error while changing pin.")
             raise ALserviceAuthenticationError() from error
