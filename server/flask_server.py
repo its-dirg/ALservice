@@ -1,3 +1,4 @@
+from importlib import import_module
 import logging
 from logging.handlers import RotatingFileHandler
 from flask.ext.babel import Babel
@@ -10,8 +11,8 @@ from flask import abort
 from flask import request
 from flask import session
 from flask import redirect
-from alservice.al import AccountLinking, JWTHandler, EmailSmtp
-from alservice.db import ALDictDatabase
+from alservice.al import AccountLinking, JWTHandler, Email, EmailSmtp
+from alservice.db import ALDictDatabase, ALdatabase
 from alservice.exception import ALserviceAuthenticationError, ALserviceTokenError, \
     ALserviceNoSuchKey, ALserviceNotAValidPin
 from urllib.parse import parse_qs
@@ -151,6 +152,14 @@ def verify_token():
                            language=session["language"])
 
 
+def import_database_class():
+    db_module = app.config['DATABASE_CLASS_PATH']
+    path, _class = db_module.rsplit('.', 1)
+    module = import_module(path)
+    database_class = getattr(module, _class)
+    return database_class
+
+
 @app.route("/save_account", methods=["POST"])
 def verify_pin():
     pin = request.form["pin"]
@@ -166,6 +175,9 @@ def verify_pin():
                                language=session["language"])
     return redirect(redirect_url)
 
+
+class MustInheritFromALdatabase(Exception):
+    pass
 
 if __name__ == "__main__":
     import ssl
@@ -188,7 +200,6 @@ if __name__ == "__main__":
         context.load_cert_chain(app.config["SERVER_CERT"], app.config["SERVER_KEY"])
     global keys
     global al
-    data_base = ALDictDatabase()
     keys = []
     for key in app.config["JWT_PUB_KEY"]:
         _bkey = rsa_load(key)
@@ -205,9 +216,14 @@ if __name__ == "__main__":
                                               app.config['PORT'])
 
     email_sender = EmailSmtp(message_subject, message, message_from, smtp_server, verify_url)
-    al = AccountLinking(data_base, salt, email_sender, pin_verify=app.config["PIN_CHECK"],
-                        pin_empty=app.config["PIN_EMPTY"])
+    database_class = import_database_class()
+    if not issubclass(database_class, ALdatabase):
+        raise MustInheritFromALdatabase("%s does not inherit from ALdatabase" % database_class)
+    database = database_class(*app.config['DATABASE_CLASS_PARAMETERS'])
 
+    al = AccountLinking(database, salt, email_sender, pin_verify=app.config["PIN_CHECK"],
+                        pin_empty=app.config["PIN_EMPTY"])
+    
     app.secret_key = app.config['SECRET_SESSION_KEY']
     app.run(host=app.config['HOST'], port=app.config['PORT'], debug=app.config['DEBUG'],
             ssl_context=context)

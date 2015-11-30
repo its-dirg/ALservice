@@ -20,6 +20,6 @@ setup(
                  'License :: OSI Approved :: GNU GENERAL PUBLIC LICENSE',
                  'Topic :: Software Development :: Libraries :: Python Modules',
                  'Programming Language :: Python :: 3.4'],
-    install_requires=["pyjwkest", "Flask", "Flask-Babel", "Flask-Mako"],
+    install_requires=["pyjwkest", "Flask", "Flask-Babel", "Flask-Mako", "dataset"],
     zip_safe=False,
 )

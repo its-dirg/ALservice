@@ -3,11 +3,11 @@ from datetime import datetime
 from unittest.mock import patch
 
 import pytest
-from alservice.db import ALDictDatabase, ALdatabase
+from alservice.db import ALDictDatabase, ALdatabase, ALSQLiteDatabase
 from alservice.exception import ALserviceDbValidationError, ALserviceDbNotUniqueTokenError, \
     ALserviceDbValueDoNotExistsError, ALserviceDbKeyDoNotExistsError
 
-DATABASES = [ALDictDatabase()]
+DATABASES = [ALDictDatabase(), ALSQLiteDatabase()]
 """:type: list[ALdatabase]"""
 
 
@@ -271,12 +271,12 @@ class TestDB():
         database.create_link("my_key", "my_idp", "email_hash")
         uuid = database.get_uuid("my_key")
         assert uuid is not None
-        ticket_state = database.remove_account("email_hash_!")
-        ticket_state = database.remove_account("email_hash")
+        database.remove_account("email_hash_!")
+        database.remove_account("email_hash")
         assert database.db_empty(), "Database must be empty to run test!"
         _error = None
         try:
-            ticket_state = database.remove_account("")
+            database.remove_account("")
         except ALserviceDbValidationError as error:
             _error = error
             assert ALdatabase.EMAIL_HASH in error.message, "All keys must be in the message"
@@ -298,3 +298,14 @@ class TestDB():
                     ALdatabase.OLD_PIN_HASH in error.message and
                     ALdatabase.NEW_PIN_HASH in error.message), "All keys must be in the message"
         assert _error is not None, "Must be an ALserviceDbValidationError!"
+
+    @pytest.mark.parametrize("database", DATABASES)
+    def test_create_multiple_account_links(self, database: ALdatabase):
+        assert database.db_empty(), "Database must be empty to run test!"
+        email = "email_hash"
+        database.create_link("my_key", "my_idp", email)
+        database.create_link("my_key2", "my_idp2", email)
+        account_list = database._get_account_link_data(email)
+        assert len(account_list) == 2
+
+
