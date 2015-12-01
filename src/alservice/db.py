@@ -2,6 +2,10 @@ from abc import abstractmethod
 from datetime import datetime
 import hashlib
 import logging
+import json
+import dataset
+from sqlalchemy.exc import IntegrityError
+
 from alservice.exception import ALserviceDbKeyDoNotExistsError, ALserviceDbUnknownError, \
     ALserviceDbNotUniqueTokenError, ALserviceDbValidationError, ALserviceDbValueDoNotExistsError, \
     ALserviceDbError
@@ -10,15 +14,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 class TicketState(object):
-    def __init__(self, timestamp: datetime, key, idp, redirect):
+    def __init__(self, timestamp: datetime, key: str, idp: str, redirect:str):
         """
 
-        :timestamp datetime
-        :jwt: dict
-
-        :param timestamp:
-        :param data:
-        :return:
+        :param timestamp: Time when the ticket state where created
+        :param key: A key on which the ticket is based
+        :param idp: The IDP which you want to connect to a user
+        :param redirect: An URL to which the user should be redirected when flow is completed
         """
         self.timestamp = timestamp
         self.key = key
@@ -27,15 +29,11 @@ class TicketState(object):
 
 
 class TokenState(object):
-    def __init__(self, timestamp, email_hash):
+    def __init__(self, timestamp: datetime, email_hash: str):
         """
 
-        :timestamp datetime
-        :jwt: dict
-
-        :param timestamp:
-        :param data:
-        :return:
+        :param timestamp: Time when the token where created
+        :param email_hash: Hash value of an email address
         """
         self.timestamp = timestamp
         self.email_hash = email_hash
@@ -84,9 +82,11 @@ class ALdatabase(object):
     @abstractmethod
     def save_ticket_state(self, ticket: str, key: str, idp: str, redirect: str):
         """
+
         :param ticket: A uuid that represents a state.
-        :param state: The state
-        :return:
+        :param key: The account linking question asked by the client
+        :param idp: The IDP which you want to connect to a user
+        :param redirect: An URL to which the user should be redirected when flow is completed
         """
         ALDictDatabase.validation(
             {
@@ -102,8 +102,7 @@ class ALdatabase(object):
         """
 
         :param token: A uuid that represents a state.
-        :param state: The state
-        :return:
+        :param email_hash: A hash value of an email address
         """
         ALDictDatabase.validation(
             {
@@ -116,8 +115,8 @@ class ALdatabase(object):
     def get_token_state(self, token: str) -> TokenState:
         """
 
-        :param token:
-        :return:
+        :param token: Identifier for a token in the database
+        :return: Token state
         """
         ALDictDatabase.validation(
             {
@@ -127,6 +126,11 @@ class ALdatabase(object):
 
     @abstractmethod
     def get_ticket_state(self, ticket: str) -> TicketState:
+        """
+
+        :param ticket: Identifier for a ticket in the database
+        :return: Ticket state
+        """
         ALDictDatabase.validation(
             {
                 ALdatabase.TICKET: ticket
@@ -135,6 +139,12 @@ class ALdatabase(object):
 
     @abstractmethod
     def create_account(self, email_hash: str, pin_hash: str, uuid: str):
+        """
+
+        :param email_hash: A hash value of an email address
+        :param pin_hash: Hash value of a pin code
+        :param uuid: Unique identifier for the user
+        """
         ALDictDatabase.validation(
             {
                 ALdatabase.EMAIL_HASH: email_hash,
@@ -145,6 +155,12 @@ class ALdatabase(object):
 
     @abstractmethod
     def create_link(self, key: str, idp: str, email_hash: str):
+        """
+
+        :param key: The account linking question asked by the client
+        :param idp: The IDP which you want to connect to a user
+        :param email_hash: A hash value of an email address
+        """
         ALDictDatabase.validation(
             {
                 ALdatabase.KEY: key,
@@ -155,6 +171,11 @@ class ALdatabase(object):
 
     @abstractmethod
     def remove_link(self, email_hash: str, idp: str):
+        """
+
+        :param email_hash: A hash value of an email address
+        :param idp: The IDP which you want to connect to a user
+        """
         ALDictDatabase.validation(
             {
                 ALdatabase.IDP: idp,
@@ -164,6 +185,10 @@ class ALdatabase(object):
 
     @abstractmethod
     def verify_account(self, email_hash: str, pin_hash: str):
+        """
+        :param email_hash: A hash value of an email address
+        :param pin_hash: Hash value of a users pin code
+        """
         ALDictDatabase.validation(
             {
                 ALdatabase.EMAIL_HASH: email_hash,
@@ -173,6 +198,9 @@ class ALdatabase(object):
 
     @abstractmethod
     def remove_ticket_state(self, ticket: str):
+        """
+        :param ticket: The ticket to remove
+        """
         ALDictDatabase.validation(
             {
                 ALdatabase.TICKET: ticket
@@ -181,6 +209,9 @@ class ALdatabase(object):
 
     @abstractmethod
     def remove_token_state(self, token: str):
+        """
+        :param token: THe token to remove
+        """
         ALDictDatabase.validation(
             {
                 ALdatabase.TOKEN: token
@@ -189,6 +220,9 @@ class ALdatabase(object):
 
     @abstractmethod
     def remove_account(self, email_hash: str):
+        """
+        :param email_hash: A hash value of an email address
+        """
         ALDictDatabase.validation(
             {
                 ALdatabase.EMAIL_HASH: email_hash
@@ -197,6 +231,11 @@ class ALdatabase(object):
 
     @abstractmethod
     def change_pin(self, email_hash: str, old_pin_hash: str, new_pin_hash: str):
+        """
+        :param email_hash: A hash value of an email address
+        :param old_pin_hash: Hash value of the old pin code
+        :param new_pin_hash: Hash value of the new pin code
+        """
         ALDictDatabase.validation(
             {
                 ALdatabase.EMAIL_HASH: email_hash,
@@ -207,10 +246,16 @@ class ALdatabase(object):
 
     @abstractmethod
     def db_empty(self) -> bool:
+        """
+        :return: Returns true if all tables is the database is empty
+        """
         return
 
     @abstractmethod
     def db_clear(self):
+        """
+        :return: Clears all tables in the database
+        """
         return
 
 
@@ -393,7 +438,7 @@ class ALDictDatabase(ALdatabase):
         """
         try:
             super(ALDictDatabase, self).create_link(key, idp, email_hash)
-            link = self._create_link(email_hash, idp)
+            link = ALDictDatabase._create_link(email_hash, idp)
             self.remove_link(email_hash, idp)
             if key in self.key_to_link:
                 LOGGER.error("Unknown key (%s) in key_to_link." % key)
@@ -418,7 +463,8 @@ class ALDictDatabase(ALdatabase):
             LOGGER.exception("Unkown error while creating a link.")
             raise
 
-    def _create_link(self, email_hash: str, idp: str):
+    @staticmethod
+    def _create_link(email_hash: str, idp: str):
         link = hashlib.sha512(idp.encode() + email_hash.encode()).hexdigest()
         return link
 
@@ -428,7 +474,7 @@ class ALDictDatabase(ALdatabase):
         """
         try:
             super(ALDictDatabase, self).remove_link(email_hash, idp)
-            link = self._create_link(email_hash, idp)
+            link = ALDictDatabase._create_link(email_hash, idp)
             if link in self.link_to_key:
                 del_key = self.link_to_key[link]
                 del self.key_to_link[del_key]
@@ -536,3 +582,293 @@ class ALDictDatabase(ALdatabase):
         self.key_to_link = {}
         self.link_to_key = {}
         self.account_to_link = {}
+
+    def _get_account_link_data(self, email_hash: str) -> list:
+        if email_hash in self.account_to_link:
+            return self.account_to_link[email_hash]
+        return None
+
+class ALSQLiteDatabase(ALdatabase):
+    TICKET_TABLE_NAME = "ticket_table"
+    TOKEN_TABLE_NAME = "token_table"
+    ACCOUNT_TABLE_NAME = "account_table"
+    KEY_TO_LINK_TABLE_NAME = "key_to_link_table"
+    LINK_TO_KEY_TABLE_NAME = "link_to_key_table"
+    ACCOUNT_TO_LINK_TABLE_NAME = "account_to_link_table"
+
+    def __init__(self, database_path=None):
+        self.c_db = dataset.connect('sqlite:///:memory:')
+        if database_path:
+            self.c_db = dataset.connect('sqlite:///' + database_path)
+        self.ticket_table = self.c_db.get_table(
+            self.TICKET_TABLE_NAME,
+            primary_id=ALDictDatabase.TICKET_TICKET_PRIMARY,
+            primary_type='String(250)'
+        )
+        self.token_table = self.c_db.get_table(
+            self.TOKEN_TABLE_NAME,
+            primary_id=ALDictDatabase.TOKEN_TOKEN_PRIMARY,
+            primary_type='String(250)'
+        )
+        self.account_table = self.c_db.get_table(
+            self.ACCOUNT_TABLE_NAME,
+            primary_id=ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY,
+            primary_type='String(250)'
+        )
+        self.key_to_link_table = self.c_db.get_table(
+            self.KEY_TO_LINK_TABLE_NAME,
+            primary_id=ALDictDatabase.KEY_TO_LINK_KEY_PRIMARY,
+            primary_type='String(250)'
+        )
+        self.link_to_key_table = self.c_db.get_table(
+            self.LINK_TO_KEY_TABLE_NAME,
+            primary_id=ALDictDatabase.LINK_TO_KEY_LINK_PRIMARY,
+            primary_type='String(250)'
+        )
+        self.account_to_link_table = self.c_db.get_table(
+            self.ACCOUNT_TO_LINK_TABLE_NAME,
+            primary_id=ALDictDatabase.ACCOUNT_TO_LINK_EMAIL_HASH_PRIMARY,
+            primary_type='String(250)'
+        )
+
+    def get_uuid(self, key: str) -> str:
+        """
+        See ALdatabase#get_uuid
+        """
+        try:
+            super(ALSQLiteDatabase, self).get_uuid(key)
+
+            if not self.key_to_link_table.find_one(key=key):
+                raise ALserviceDbKeyDoNotExistsError()
+
+            row = self.key_to_link_table.find_one(key=key)
+
+            try:
+                email_hash = row[ALDictDatabase.KEY_TO_LINK_EMAIL_HASH]
+            except KeyError:
+                email_hash = None
+
+            account = self.account_table.find_one(email=email_hash)
+            if not account:
+                raise ALserviceDbKeyDoNotExistsError()
+
+            uuid = account[ALDictDatabase.ACCOUNT_UUID]
+
+            if uuid is None:
+                raise ALserviceDbUnknownError()
+            return uuid
+        except Exception as error:
+            self.handle_exception(error)
+
+    def handle_exception(self, error):
+        if not isinstance(error, ALserviceDbError):
+            raise ALserviceDbUnknownError() from error
+        LOGGER.exception("Unkown error while getting uuid.")
+        raise
+
+    def db_empty(self) -> bool:
+        """
+        See ALdatabase#db_empty
+        """
+        return (self.ticket_table.count() + self.token_table.count() +
+                self.account_table.count() + self.key_to_link_table.count() +
+                self.link_to_key_table.count() + self.account_to_link_table.count() == 0)
+
+    def create_account(self, email_hash: str, pin_hash: str, uuid: str):
+        """
+        See ALdatabase#create_account
+        """
+        try:
+            super(ALSQLiteDatabase, self).create_account(email_hash, pin_hash, uuid)
+            if self.account_table.find_one(email=email_hash):
+                raise ALserviceDbNotUniqueTokenError()
+            _dict_account = {
+                ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY: email_hash,
+                ALDictDatabase.ACCOUNT_PIN_HASH: pin_hash,
+                ALDictDatabase.ACCOUNT_UUID: uuid,
+                ALDictDatabase.ACCOUNT_TIMESTAMP: str(datetime.now())
+            }
+            self.account_table.insert(_dict_account)
+        except Exception as error:
+            self.handle_exception(error)
+
+    def _create_link(self, email_hash: str, idp: str):
+        link = hashlib.sha512(idp.encode() + email_hash.encode()).hexdigest()
+        return link
+
+    def create_link(self, key: str, idp: str, email_hash: str):
+        try:
+            super(ALSQLiteDatabase, self).create_link(key, idp, email_hash)
+            link = ALDictDatabase._create_link(email_hash, idp)
+            self.remove_link(email_hash, idp)
+            # if self.key_to_link_table.find_one(key=key):
+            _dict_key_to_link = {
+                ALDictDatabase.KEY_TO_LINK_KEY_PRIMARY: key,
+                ALDictDatabase.KEY_TO_LINK_IDP: idp,
+                ALDictDatabase.KEY_TO_LINK_EMAIL_HASH: email_hash
+            }
+
+            _account_to_link_data = {
+                ALDictDatabase.ACCOUNT_TO_LINK_KEY: key,
+                ALDictDatabase.ACCOUNT_TO_LINK_LINK: link,
+            }
+
+            _dict_account_to_link = {
+                ALDictDatabase.ACCOUNT_TO_LINK_EMAIL_HASH_PRIMARY: email_hash,
+                "data": json.dumps([_account_to_link_data])
+            }
+
+            _dict_link_to_key = {
+                ALDictDatabase.LINK_TO_KEY_LINK_PRIMARY: link,
+                ALDictDatabase.LINK_TO_KEY_KEY: key
+            }
+
+            try:
+                result = self.account_to_link_table.find_one(email=email_hash)
+                if result:
+                    account_list = json.loads(result["data"])
+                    account_list.append(_account_to_link_data)
+                    _dict_account_to_link['data'] = json.dumps(account_list)
+                self.account_to_link_table.upsert(
+                    _dict_account_to_link,
+                    [ALDictDatabase.ACCOUNT_TO_LINK_EMAIL_HASH_PRIMARY]
+                )
+                self.key_to_link_table.insert(_dict_key_to_link)
+                self.link_to_key_table.insert(_dict_link_to_key)
+            except IntegrityError as err:
+                raise ALserviceDbNotUniqueTokenError()
+        except Exception as error:
+            self.handle_exception(error)
+
+    def remove_link(self, email_hash: str, idp: str):
+        try:
+            super(ALSQLiteDatabase, self).remove_link(email_hash, idp)
+            link = ALDictDatabase._create_link(email_hash, idp)
+            result = self.link_to_key_table.find_one(link=link)
+            if result:
+                key = result[ALDictDatabase.KEY_TO_LINK_KEY_PRIMARY]
+                self.key_to_link_table.delete(key=key)
+                self.link_to_key_table.delete(link=link)
+        except Exception as error:
+            self.handle_exception(error)
+
+    def get_ticket_state(self, result: str) -> TicketState:
+        try:
+            super(ALSQLiteDatabase, self).get_ticket_state(result)
+            result = self.ticket_table.find_one(ticket=result)
+            if not result:
+                raise ALserviceDbKeyDoNotExistsError()
+            key = result[ALDictDatabase.TICKET_KEY]
+            idp = result[ALDictDatabase.TICKET_IDP]
+            timestamp = result[ALDictDatabase.TICKET_TIMESTAMP]
+            redirect = result[ALDictDatabase.TICKET_REDIRECT_URL]
+            ticket_state = TicketState(timestamp, key, idp, redirect)
+            return ticket_state
+        except Exception as error:
+            self.handle_exception(error)
+
+    def save_ticket_state(self, ticket: str, key: str, idp: str, redirect: str):
+        try:
+            super(ALSQLiteDatabase, self).save_ticket_state(ticket, key, idp, redirect)
+            if self.ticket_table.find_one(ticket=ticket):
+                raise ALserviceDbNotUniqueTokenError()
+            _dict = {
+                ALDictDatabase.TICKET_TICKET_PRIMARY: ticket,
+                ALDictDatabase.TICKET_IDP: idp,
+                ALDictDatabase.TICKET_KEY: key,
+                ALDictDatabase.TICKET_REDIRECT_URL: redirect,
+                ALDictDatabase.TICKET_TIMESTAMP: datetime.now()
+            }
+            self.ticket_table.insert(_dict)
+        except Exception as error:
+            self.handle_exception(error)
+
+    def save_token_state(self, token: str, email_hash: str):
+        try:
+            super(ALSQLiteDatabase, self).save_token_state(token, email_hash)
+            if self.token_table.find_one(token=token):
+                raise ALserviceDbNotUniqueTokenError()
+            _dict = {
+                ALDictDatabase.TOKEN_TOKEN_PRIMARY: token,
+                ALDictDatabase.TOKEN_EMAIL_HASH: email_hash,
+                ALDictDatabase.TICKET_TIMESTAMP: datetime.now()
+            }
+            self.token_table.insert(_dict)
+        except Exception as error:
+            self.handle_exception(error)
+
+    def get_token_state(self, token: str) -> TokenState:
+        try:
+            super(ALSQLiteDatabase, self).get_token_state(token)
+            result = self.token_table.find_one(token=token)
+            if not result:
+                raise ALserviceDbKeyDoNotExistsError()
+            email_hash = result[ALDictDatabase.TOKEN_EMAIL_HASH]
+            timestamp = result[ALDictDatabase.TOKEN_TIMESTAMP]
+            email_state = TokenState(timestamp, email_hash)
+            return email_state
+        except Exception as error:
+            self.handle_exception(error)
+
+    def verify_account(self, email_hash: str, pin_hash: str):
+        try:
+            super(ALSQLiteDatabase, self).verify_account(email_hash, pin_hash)
+            account = self.account_table.find_one(email=email_hash)
+            if not account:
+                raise ALserviceDbKeyDoNotExistsError()
+            if pin_hash != account[ALDictDatabase.ACCOUNT_PIN_HASH]:
+                raise ALserviceDbValueDoNotExistsError()
+        except Exception as error:
+            self.handle_exception(error)
+
+    def remove_ticket_state(self, ticket: str):
+        try:
+            super(ALSQLiteDatabase, self).remove_ticket_state(ticket)
+            self.ticket_table.delete(ticket=ticket)
+        except Exception as error:
+            self.handle_exception(error)
+
+    def remove_token_state(self, token: str):
+        try:
+            super(ALSQLiteDatabase, self).remove_token_state(token)
+            self.token_table.delete(token=token)
+        except Exception as error:
+            self.handle_exception(error)
+
+    def remove_account(self, email_hash: str):
+        try:
+            super(ALSQLiteDatabase, self).remove_account(email_hash)
+            self.account_table.delete(email=email_hash)
+            _dict_account_to_link = self.account_to_link_table.find_one(email=email_hash)
+            if _dict_account_to_link:
+                account_to_link_list = json.loads(_dict_account_to_link['data'])
+                for tmp_link in account_to_link_list:
+                    self.link_to_key_table.delete(link=tmp_link[ALDictDatabase.ACCOUNT_TO_LINK_LINK])
+                    self.key_to_link_table.delete(key=tmp_link[ALDictDatabase.ACCOUNT_TO_LINK_KEY])
+                self.account_to_link_table.delete(email=email_hash)
+        except Exception as error:
+            self.handle_exception(error)
+
+    def _get_account_link_data(self, email_hash: str) -> list:
+        result = self.account_to_link_table.find_one(email=email_hash)
+        if result:
+            return json.loads(result['data'])
+        return None
+
+    def change_pin(self, email_hash: str, old_pin_hash: str, new_pin_hash: str):
+        try:
+            super(ALSQLiteDatabase, self).change_pin(email_hash, old_pin_hash, new_pin_hash)
+            self.verify_account(email_hash, old_pin_hash)
+            row = self.account_table.find_one(email=email_hash)
+            row[ALDictDatabase.ACCOUNT_PIN_HASH] = new_pin_hash
+            self.account_table.upsert(row, [ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY])
+        except Exception as error:
+            self.handle_exception(error)
+
+    def db_clear(self):
+        self.ticket_table.delete()
+        self.token_table.delete()
+        self.account_table.delete()
+        self.key_to_link_table.delete()
+        self.link_to_key_table.delete()
+        self.account_to_link_table.delete()
