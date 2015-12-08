@@ -1,6 +1,5 @@
 from importlib import import_module
 import logging
-from logging.handlers import RotatingFileHandler
 from flask.ext.babel import Babel
 from flask.ext.mako import MakoTemplates, render_template
 from flask.helpers import send_from_directory
@@ -14,7 +13,7 @@ from flask import redirect
 from alservice.al import AccountLinking, JWTHandler, Email, EmailSmtp
 from alservice.db import ALDictDatabase, ALdatabase
 from alservice.exception import ALserviceAuthenticationError, ALserviceTokenError, \
-    ALserviceNoSuchKey, ALserviceNotAValidPin
+    ALserviceNoSuchKey, ALserviceNotAValidPin, ALserviceTicketError
 from urllib.parse import parse_qs
 
 app = Flask(__name__, static_folder='static')
@@ -124,18 +123,16 @@ def send_token():
                            token_error=False,
                            language=session["language"])
 
+
 @app.route("/verify_token", methods=["POST"])
 def verify_token():
     if not change_language():
-        # parsed_qs = parse_qs(request.query_string.decode())
-        # if "token" in parsed_qs:
-        #     session["token"] = parsed_qs["token"][0]
         if "token" in request.form:
             session["token"] = request.form["token"]
         try:
             token = session["token"]
             al.create_account_step2(token)
-        except ALserviceTokenError:
+        except (ALserviceTokenError, ALserviceTicketError):
             return render_template("token_was_sent.mako",
                                    name="mako",
                                    form_action='/verify_token',
@@ -181,6 +178,7 @@ class MustInheritFromALdatabase(Exception):
 
 if __name__ == "__main__":
     import ssl
+
     app.config.from_pyfile("settings.cfg")
     LOGGER = logging.getLogger("alservice")
     hdlr = logging.FileHandler(app.config["LOG_FILE"])

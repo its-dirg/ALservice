@@ -44,7 +44,7 @@ msgstr "Kontolänkning"
 
 #: templates/login.mako:8
 msgid "USER_PASSWORD_ERROR"
-msgstr ""
+msgstr "Fel användarnamn/lösenord"
 
 #: templates/login.mako:15 templates/save_account.mako:13
 msgid "PIN"

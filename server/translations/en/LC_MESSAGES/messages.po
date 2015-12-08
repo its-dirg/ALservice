@@ -44,7 +44,7 @@ msgstr "Account linking"
 
 #: templates/login.mako:8
 msgid "USER_PASSWORD_ERROR"
-msgstr ""
+msgstr "Wrong username/password"
 
 #: templates/login.mako:15 templates/save_account.mako:13
 msgid "PIN"
