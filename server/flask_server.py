@@ -53,15 +53,14 @@ def get_id():
     try:
         jwt = parsed_qs["jwt"][0]
     except KeyError:
-        abort(401)
+        abort(400)
     jso = JWTHandler.unpack_jwt(jwt, keys)
     key = JWTHandler.key(jso)
     try:
         uuid = al.get_uuid(key)
     except ALserviceNoSuchKey:
-        # TODO Need the idp and redirect. Using protected function
         ticket = al.create_ticket(key, jso["idp"], jso["redirect_endpoint"])
-        return ticket, 400
+        return ticket, 404
     return uuid, 200
 
 
@@ -114,7 +113,7 @@ def send_token():
                 email = session["email"]
             ticket = session["ticket"]
         except KeyError:
-            abort(401)
+            abort(400)
         al.create_account_step1(email, ticket)
     return render_template("token_was_sent.mako",
                            name="mako",
@@ -140,7 +139,7 @@ def verify_token():
                                    token_error=True,
                                    language=session["language"])
         except KeyError:
-            abort(500)
+            abort(400)
 
     return render_template("save_account.mako",
                            name="mako",
