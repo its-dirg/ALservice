@@ -1,7 +1,7 @@
 import pytest
 
 from alservice.al import AccountLinking, Email, JWTHandler
-from alservice.db import ALDictDatabase
+from alservice.db import ALDictDatabase, ALSQLiteDatabase
 from alservice.exception import ALserviceTicketError, \
     ALserviceTokenError, ALserviceAccountExists, ALserviceAuthenticationError, ALserviceNoSuchKey, \
     ALserviceNotAValidPin
@@ -164,7 +164,7 @@ class TestAL(object):
         assert _error is not None
 
     def test_multipleusers_keys(self):
-        for i in range(0, 1000):
+        for i in range(0, 100):
             my_pin = "my_pinASD321423432###_%i" % i
             my_idp = "my_idp_%i" % i
             my_email = "my_email_%i" % i
@@ -195,7 +195,7 @@ class TestAL(object):
                 uuid_1_tmp = self.al.get_uuid(my_key_tmp)
                 assert uuid_1 == uuid_1_tmp
         uuid_dict = {}
-        for i in range(0, 1000):
+        for i in range(0, 25):
             my_idp = "my_idp_%i" % i
             my_id = "my_id_%i" % i
             jso = {
