@@ -1,6 +1,7 @@
 # ALservice
 
-An account linking service 
+A webservice for linking multiple accounts at identity providers to a single email address (provided
+ by the end-user).
 
 ![](images/ALservice.png "Account linking service overview")
 
