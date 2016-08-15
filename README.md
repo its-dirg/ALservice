@@ -19,9 +19,9 @@ and a redirect endpoint. The parameters are packed as a signed JWT.
 1. An unique identifier is generated and stored by the Account linking service are returned to the 
 proxy
 
-    
+# Install dependencies
+To install all necessary dependencies, run `python setup.py install` in the root directory.
 
-    
 
 # Run ALservice 
 Copy the **settings.cfg.example** and rename the copy **settings.cfg**. At the moment it's not 
