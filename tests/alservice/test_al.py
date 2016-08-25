@@ -7,7 +7,7 @@ from alservice.exception import ALserviceTicketError, \
     ALserviceNotAValidPin
 
 
-class TestEmail(Email):
+class EmailFake(Email):
     def __init__(self):
         self.token = None
         self.email_to = None
@@ -42,8 +42,8 @@ class TestAL(object):
             trusted_keys=[],
             db=self.db,
             salt="my_salt",
-            email_sender_create_account=TestEmail(),
-            email_sender_pin_recovery=TestEmail(),
+            email_sender_create_account=EmailFake(),
+            email_sender_pin_recovery=EmailFake(),
             pin_verify="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{6,20})",
             pin_empty=True)
 
@@ -205,8 +205,8 @@ class TestAL(object):
         al = AccountLinking(trusted_keys=[],
                             db=self.db,
                             salt="my_salt",
-                            email_sender_create_account=TestEmail(),
-                            email_sender_pin_recovery=TestEmail(),
+                            email_sender_create_account=EmailFake(),
+                            email_sender_pin_recovery=EmailFake(),
                             pin_verify="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{6,20})",
                             pin_empty=False)
 
