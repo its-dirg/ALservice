@@ -42,8 +42,7 @@ class EmailSmtp(Email):
     """
     TOKEN_REPLACE = "<<token>>"
 
-    def __init__(self, subject: str, message: str, email_from: str, smtp_server: str,
-                 verify_url: str):
+    def __init__(self, subject: str, message: str, email_from: str, smtp_server: str):
         self.subject = subject
         """:type: str"""
 
@@ -54,9 +53,6 @@ class EmailSmtp(Email):
         """:type: str"""
 
         self.smtp_server = smtp_server
-        """:type: str"""
-
-        self.verify_url = verify_url
         """:type: str"""
 
     def send_mail(self, token: str, email_to: str):

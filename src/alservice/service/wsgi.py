@@ -40,9 +40,8 @@ def init_account_linking(app: Flask):
     message_from = app.config["MESSAGE_FROM"]
     message_subject = app.config["MESSAGE_SUBJECT"]
     smtp_server = app.config["SMTP_SERVER"]
-    verify_url = "{}/verify_token".format(url_for('account_linking_service.verify_token'), _external=True)
 
-    email_sender = EmailSmtp(message_subject, message, message_from, smtp_server, verify_url)
+    email_sender = EmailSmtp(message_subject, message, message_from, smtp_server)
     database_class = import_database_class(app.config['DATABASE_CLASS_PATH'])
     if not issubclass(database_class, ALdatabase):
         raise ValueError("%s does not inherit from ALdatabase" % database_class)
