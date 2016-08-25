@@ -87,7 +87,7 @@ def send_token():
             ticket = session["ticket"]
         except KeyError:
             abort(400)
-        al.create_account_step1(email, ticket)
+        current_app.al.create_account_step1(email, ticket)
     return render_template("token_was_sent.mako",
                            name="mako",
                            form_action='/send_token',

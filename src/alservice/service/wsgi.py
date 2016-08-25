@@ -4,14 +4,13 @@ from importlib import import_module
 
 import pkg_resources
 from flask.app import Flask
-from flask.helpers import url_for
 from flask.globals import session
 from flask_babel import Babel
 from flask_mako import MakoTemplates
 from jwkest.jwk import rsa_load, RSAKey
 from mako.lookup import TemplateLookup
 
-from alservice.al import EmailSmtp, AccountLinking
+from alservice.al import EmailSmtp, AccountLinking, Email
 from alservice.db import ALdatabase
 from alservice.service.views import get_browser_lang
 
@@ -30,7 +29,7 @@ def import_database_class(db_class):
     return database_class
 
 
-def init_account_linking(app: Flask):
+def init_account_linking(app: Flask, mail_client: Email = None):
     trusted_keys = [RSAKey(key=rsa_load(path)) for path in app.config["JWT_PUB_KEY"]]
     salt = app.config["SALT"]
 
@@ -41,7 +40,7 @@ def init_account_linking(app: Flask):
     message_subject = app.config["MESSAGE_SUBJECT"]
     smtp_server = app.config["SMTP_SERVER"]
 
-    email_sender = EmailSmtp(message_subject, message, message_from, smtp_server)
+    email_sender = mail_client or EmailSmtp(message_subject, message, message_from, smtp_server)
     database_class = import_database_class(app.config['DATABASE_CLASS_PATH'])
     if not issubclass(database_class, ALdatabase):
         raise ValueError("%s does not inherit from ALdatabase" % database_class)
@@ -62,7 +61,7 @@ def setup_logging(logging_level: str):
     logger.addHandler(hdlr)
 
 
-def create_app(config: dict = {}):
+def create_app(config: dict = {}, mail_client=None):
     app = Flask(__name__, static_folder='static')
 
     if config:
@@ -75,7 +74,7 @@ def create_app(config: dict = {}):
                                       input_encoding='utf-8', output_encoding='utf-8',
                                       imports=['from flask_babel import gettext as _'])
 
-    app.al = init_account_linking(app)
+    app.al = init_account_linking(app, mail_client)
 
     babel = Babel(app)
     babel.localeselector(get_locale)
