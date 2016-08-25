@@ -48,7 +48,6 @@ in the **settings.cfg** file.
 | PORT | Integer | 8167 | Port on which the ALservice should start |
 | HOST | String | "127.0.0.1" | The IP-address on which the ALservice should run |
 | DEBUG | boolean | False | Turn on or off the Flask servers internal debugging, should be turned off to ensure that all log information get stored in the log file |
-| TICKET_TTL | Integer | 600 | For how many seconds the ticket should be valid |
 | DATABASE_CLASS_PATH | String | "alservice.db.ALSQLiteDatabase" | Specifies which python database class the ALservice should use. Currently there exists two modules ALDictDatabase and ALSQLiteDatabase |
 | DATABASE_CLASS_PARAMETERS | List of strings | ["test.db"] | Input parameters which should be passed into the database class specified above. ALSQLiteDatabase needs a single parameter, a path where the database should be stored. ALDictDatabase does not take any parameters so [] should be specified |
 | AUTO_SELECT_ATTRIBUTES | boolean | True | Specifies if all the attributes in the GUI should be selected or not |

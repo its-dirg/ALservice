@@ -6,7 +6,6 @@ SECRET_KEY="fdgfds%€#&436gfjhköltfsdjglök34j5oö43ijtglkfdjgasdftglok432jtge
 PORT=8167
 HOST="127.0.0.1"
 DEBUG=True
-TICKET_TTL=600
 MESSAGE_TEMPLATE="message.txt"
 MESSAGE_FROM="al.service@umu.se"
 MESSAGE_SUBJECT="Account registration"

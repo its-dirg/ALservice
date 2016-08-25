@@ -133,7 +133,6 @@ class AccountLinking(object):
 
         :param db: Database to use
         :param keys: Public keys to verify JWT signature.
-        :param ticket_ttl: How long the ticket should live in seconds.
         :return:
         """
         self.pin_verify = None
