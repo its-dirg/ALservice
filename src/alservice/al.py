@@ -42,8 +42,7 @@ class EmailSmtp(Email):
     """
     TOKEN_REPLACE = "<<token>>"
 
-    def __init__(self, subject: str, message: str, email_from: str, smtp_server: str,
-                 verify_url: str):
+    def __init__(self, subject: str, message: str, email_from: str, smtp_server: str):
         self.subject = subject
         """:type: str"""
 
@@ -54,9 +53,6 @@ class EmailSmtp(Email):
         """:type: str"""
 
         self.smtp_server = smtp_server
-        """:type: str"""
-
-        self.verify_url = verify_url
         """:type: str"""
 
     def send_mail(self, token: str, email_to: str):
@@ -125,7 +121,7 @@ class AccountLinking(object):
     Handles account linking logic
     """
 
-    def __init__(self, db: ALdatabase, salt: str, email_sender_create_account: Email,
+    def __init__(self, trusted_keys: list, db: ALdatabase, salt: str, email_sender_create_account: Email,
                  email_sender_pin_recovery: Email = None, pin_verify: str = None,
                  pin_empty: bool = True):
         """
@@ -133,12 +129,13 @@ class AccountLinking(object):
 
         :param db: Database to use
         :param keys: Public keys to verify JWT signature.
-        :param ticket_ttl: How long the ticket should live in seconds.
         :return:
         """
         self.pin_verify = None
         if pin_verify is not None:
             self.pin_verify = re.compile(pin_verify)
+
+        self.trusted_keys = trusted_keys
 
         self.pin_empty = pin_empty
         """:type: str"""
@@ -370,7 +367,7 @@ class AccountLinking(object):
             self.db.verify_account(email_hash, pin_hash)
             token = AccountLinking.create_token(email_hash, self.salt)
             self.db.save_token_state(token, email_hash)
-            self.email_sender_create_account.send_mail(token, email)
+            self.email_sender_pin_recovery.send_mail(token, email)
         except Exception as error:
             LOGGER.exception("Unknown error while changing pin.")
             raise ALserviceAuthenticationError() from error

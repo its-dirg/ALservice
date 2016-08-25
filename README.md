@@ -24,8 +24,7 @@ To install all necessary dependencies, run `python setup.py install` in the root
 
 
 # Run ALservice 
-Copy the **settings.cfg.example** and rename the copy **settings.cfg**. At the moment it's not 
-possible to name the configuration anything other then **settings.cfg**. If needed modify the 
+Copy the **settings.cfg.example** and rename the copy **settings.cfg**. If needed modify the 
 necessary configurations. 
 
 Copy the **message.txt.example** and rename to whatever you want, for example **message.txt**. 
@@ -33,8 +32,7 @@ If you name the file anything other than **message.txt** please update the MESSA
 in the **settings.cfg** file.
 
 ```shell
-    cd ALservice/server/
-    python flask_server.py
+ALSERVICE_CONFIG=<path to settings.cfg> gunicorn alservice.service.run:app
 ```
 
 # Configuration
@@ -48,7 +46,6 @@ in the **settings.cfg** file.
 | PORT | Integer | 8167 | Port on which the ALservice should start |
 | HOST | String | "127.0.0.1" | The IP-address on which the ALservice should run |
 | DEBUG | boolean | False | Turn on or off the Flask servers internal debugging, should be turned off to ensure that all log information get stored in the log file |
-| TICKET_TTL | Integer | 600 | For how many seconds the ticket should be valid |
 | DATABASE_CLASS_PATH | String | "alservice.db.ALSQLiteDatabase" | Specifies which python database class the ALservice should use. Currently there exists two modules ALDictDatabase and ALSQLiteDatabase |
 | DATABASE_CLASS_PARAMETERS | List of strings | ["test.db"] | Input parameters which should be passed into the database class specified above. ALSQLiteDatabase needs a single parameter, a path where the database should be stored. ALDictDatabase does not take any parameters so [] should be specified |
 | AUTO_SELECT_ATTRIBUTES | boolean | True | Specifies if all the attributes in the GUI should be selected or not |
@@ -82,3 +79,23 @@ Besides the token it self a timestamp for when the token where created and the u
 
 The database also contains information about the account. This information consists of an email, an 
 timestamp, a pin code and a unique identifier for that particular user.
+
+
+# Development
+
+## i18n
+
+To extract all i18n string:
+
+```bash
+python setup.py extract_messages --input-paths src/alservice/ --output-file src/alservice/service/data/i18n/messages.pot
+```
+
+To compile .po->.mo:
+
+```bash
+python setup.py compile_catalog --directory src/alservice/service/data/i18n/locales/
+```
+
+
+See [Babel docs](http://babel.pocoo.org/en/latest/setup.html) for more info.
