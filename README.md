@@ -24,8 +24,7 @@ proxy
     
 
 # Run ALservice 
-Copy the **settings.cfg.example** and rename the copy **settings.cfg**. At the moment it's not 
-possible to name the configuration anything other then **settings.cfg**. If needed modify the 
+Copy the **settings.cfg.example** and rename the copy **settings.cfg**. If needed modify the 
 necessary configurations. 
 
 Copy the **message.txt.example** and rename to whatever you want, for example **message.txt**. 
