@@ -12,7 +12,7 @@ setup(
     description='',
     author='DIRG',
     author_email='dirg@its.umu.se',
-    license='GNU GENERAL PUBLIC LICENSE V 3',
+    license='Apache 2.0',
     url='',
     packages=find_packages('src/'),
     package_dir={'': 'src'},
@@ -21,10 +21,12 @@ setup(
                  'Topic :: Software Development :: Libraries :: Python Modules',
                  'Programming Language :: Python :: 3.4'],
     install_requires=[
-        "pyjwkest",
-        "Flask",
-        "Flask-Babel",
-        "Flask-Mako",
-        "dataset <= 0.6.0"],
+        'pyjwkest',
+        'Flask',
+        'Flask-Babel',
+        'Flask-Mako',
+        'dataset <= 0.6.0',
+        'gunicorn'
+    ],
     zip_safe=False,
 )

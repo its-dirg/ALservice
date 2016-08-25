@@ -2,7 +2,7 @@ SSL=True
 SERVER_CERT="./keys/server.crt"
 SERVER_KEY="./keys/server.key"
 JWT_PUB_KEY= ["./keys/satosa.pub"]
-SECRET_SESSION_KEY="fdgfds%€#&436gfjhköltfsdjglök34j5oö43ijtglkfdjgasdftglok432jtgerfd"
+SECRET_KEY="fdgfds%€#&436gfjhköltfsdjglök34j5oö43ijtglkfdjgasdftglok432jtgerfd"
 PORT=8167
 HOST="127.0.0.1"
 DEBUG=True
@@ -16,5 +16,4 @@ DATABASE_CLASS_PATH="alservice.db.ALSQLiteDatabase"
 DATABASE_CLASS_PARAMETERS=["test.db"]
 PIN_CHECK="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{6,20})"
 PIN_EMPTY=False
-LOG_FILE="server.log"
 LOG_LEVEL="WARNING"
