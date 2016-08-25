@@ -2,7 +2,6 @@ from urllib.parse import parse_qs
 
 from flask.blueprints import Blueprint
 from flask.globals import request, current_app, session
-from flask.helpers import send_from_directory
 from flask_mako import render_template
 from werkzeug.exceptions import abort
 from werkzeug.utils import redirect
@@ -12,11 +11,6 @@ from alservice.exception import ALserviceNoSuchKey, ALserviceAuthenticationError
     ALserviceTicketError, ALserviceNotAValidPin
 
 account_linking_views = Blueprint('account_linking_service', __name__, url_prefix='')
-
-
-@account_linking_views.route("/static/<path:path>")
-def get_static(path):
-    return send_from_directory('', path)
 
 
 @account_linking_views.route("/get_id")
