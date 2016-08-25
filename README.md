@@ -81,3 +81,23 @@ Besides the token it self a timestamp for when the token where created and the u
 
 The database also contains information about the account. This information consists of an email, an 
 timestamp, a pin code and a unique identifier for that particular user.
+
+
+# Development
+
+## i18n
+
+To extract all i18n string:
+
+```bash
+python setup.py extract_messages --input-paths src/alservice/ --output-file src/alservice/service/data/i18n/messages.pot
+```
+
+To compile .po->.mo:
+
+```bash
+python setup.py compile_catalog --directory src/alservice/service/data/i18n/locales/
+```
+
+
+See [Babel docs](http://babel.pocoo.org/en/latest/setup.html) for more info.

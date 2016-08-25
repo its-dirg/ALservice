@@ -16,6 +16,13 @@ setup(
     url='',
     packages=find_packages('src/'),
     package_dir={'': 'src'},
+    package_data={
+        'alservice.service': [
+            'data/i18n/locales/*/LC_MESSAGES/*.mo',
+            'templates/*.mako',
+            'site/static/*',
+        ],
+    },
     classifiers=['Development Status :: 4 - Beta',
                  'License :: OSI Approved :: GNU GENERAL PUBLIC LICENSE',
                  'Topic :: Software Development :: Libraries :: Python Modules',
@@ -29,4 +36,9 @@ setup(
         'gunicorn'
     ],
     zip_safe=False,
+    message_extractors={'.': [
+        ('src/alservice/**.py', 'python', None),
+        ('src/alservice/**/service/templates/**.mako', 'mako', None),
+        ('src/alservice/**/service/site/**', 'ignore', None)
+    ]}
 )

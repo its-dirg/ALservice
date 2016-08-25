@@ -5,11 +5,11 @@ from importlib import import_module
 import pkg_resources
 from flask.app import Flask
 from flask.helpers import url_for
+from flask.globals import session
 from flask_babel import Babel
 from flask_mako import MakoTemplates
 from jwkest.jwk import rsa_load, RSAKey
 from mako.lookup import TemplateLookup
-from sqlalchemy.orm import session
 
 from alservice.al import EmailSmtp, AccountLinking
 from alservice.db import ALdatabase
@@ -79,6 +79,8 @@ def create_app(config: dict = {}):
 
     babel = Babel(app)
     babel.localeselector(get_locale)
+    app.config['BABEL_TRANSLATION_DIRECTORIES'] = pkg_resources.resource_filename('alservice.service',
+                                                                                  'data/i18n/locales')
 
     from .views import account_linking_views
     app.register_blueprint(account_linking_views)

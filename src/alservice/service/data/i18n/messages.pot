@@ -1,0 +1,84 @@
+# Translations template for ALservice.
+# Copyright (C) 2016 ORGANIZATION
+# This file is distributed under the same license as the ALservice project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2016.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: ALservice 1.0.0\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2016-08-25 16:11+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.3.4\n"
+
+#: src/alservice/service/templates/base.mako:29
+msgid "Account linking service"
+msgstr ""
+
+#: src/alservice/service/templates/base.mako:30
+msgid "Links your accounts!"
+msgstr ""
+
+#: src/alservice/service/templates/create_account.mako:4
+#: src/alservice/service/templates/login.mako:19
+#: src/alservice/service/templates/token_was_sent.mako:4
+msgid "Create account"
+msgstr ""
+
+#: src/alservice/service/templates/create_account.mako:7
+#: src/alservice/service/templates/login.mako:14
+msgid "Email"
+msgstr ""
+
+#: src/alservice/service/templates/create_account.mako:8
+msgid "Send token"
+msgstr ""
+
+#: src/alservice/service/templates/login.mako:4
+#: src/alservice/service/templates/save_account.mako:4
+msgid "Account linking"
+msgstr ""
+
+#: src/alservice/service/templates/login.mako:8
+msgid "USER_PASSWORD_ERROR"
+msgstr ""
+
+#: src/alservice/service/templates/login.mako:15
+#: src/alservice/service/templates/save_account.mako:13
+msgid "PIN"
+msgstr ""
+
+#: src/alservice/service/templates/login.mako:16
+msgid "Approve"
+msgstr ""
+
+#: src/alservice/service/templates/save_account.mako:8
+msgid "PIN_ERROR_MESSAGE"
+msgstr ""
+
+#: src/alservice/service/templates/save_account.mako:14
+msgid "Save and approve"
+msgstr ""
+
+#: src/alservice/service/templates/token_was_sent.mako:6
+msgid "Token was sent to: "
+msgstr ""
+
+#: src/alservice/service/templates/token_was_sent.mako:10
+msgid "TOKEN_ERROR"
+msgstr ""
+
+#: src/alservice/service/templates/token_was_sent.mako:15
+msgid "Token"
+msgstr ""
+
+#: src/alservice/service/templates/token_was_sent.mako:16
+msgid "Verify token"
+msgstr ""
+
