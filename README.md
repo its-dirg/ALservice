@@ -33,8 +33,7 @@ If you name the file anything other than **message.txt** please update the MESSA
 in the **settings.cfg** file.
 
 ```shell
-    cd ALservice/server/
-    python flask_server.py
+ALSERVICE_CONFIG=<path to settings.cfg> gunicorn alservice.service.run:app
 ```
 
 # Configuration
