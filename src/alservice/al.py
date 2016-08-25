@@ -1,80 +1,31 @@
 """
 Module for handling account linking
 """
-from abc import abstractmethod
-from base64 import urlsafe_b64encode
-from email.header import Header
-from email.mime.text import MIMEText
 import hashlib
 import logging
 import random
-import smtplib
 import re
+from base64 import urlsafe_b64encode
 from time import mktime, gmtime
 from uuid import uuid4
+
 from jwkest import jws
 from jwkest.jwt import JWT
+
 from alservice.db import ALdatabase
 from alservice.exception import ALserviceTokenError, ALserviceAuthenticationError, \
     ALserviceDbKeyDoNotExistsError, ALserviceTicketError, ALserviceDbNotUniqueTokenError, \
     ALserviceAccountExists, ALserviceNoSuchKey, ALserviceNotAValidPin
+from alservice.mail import Email
 
 LOGGER = logging.getLogger(__name__)
-
-
-class Email(object):
-    """
-    Base class for sending a token with mail
-    """
-    @abstractmethod
-    def send_mail(self, token: str, email_to: str):
-        """
-        Sends a mail
-        :param token: Token to send
-        :param email_to: Where to send the token
-        """
-        pass
-
-
-class EmailSmtp(Email):
-    """
-    An implementation of Email using smtp
-    """
-    TOKEN_REPLACE = "<<token>>"
-
-    def __init__(self, subject: str, message: str, email_from: str, smtp_server: str):
-        self.subject = subject
-        """:type: str"""
-
-        self.message = message
-        """:type: str"""
-
-        self.email_from = email_from
-        """:type: str"""
-
-        self.smtp_server = smtp_server
-        """:type: str"""
-
-    def send_mail(self, token: str, email_to: str):
-        """
-        Sends a mail
-        :param token: Token to send
-        :param email_to: Where to send the token
-        """
-        message = self.message.replace(EmailSmtp.TOKEN_REPLACE, token)
-        msg = MIMEText(message, "plain", "utf-8")
-        msg['Subject'] = Header(self.subject, 'utf-8').encode()
-        msg['From'] = "\"{sender}\" <{sender}>".format(sender=self.email_from)
-        msg['To'] = email_to
-        s = smtplib.SMTP(self.smtp_server)
-        failed = s.sendmail(self.email_from, email_to, msg.as_string())
-        s.quit()
 
 
 class JWTHandler(object):
     """
     Handles jwt
     """
+
     @staticmethod
     def key(jso: dict):
         """
