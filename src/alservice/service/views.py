@@ -144,7 +144,7 @@ def get_browser_lang():
 def change_language():
     if "language" not in session:
         session["language"] = get_browser_lang()
-    if ("lang" in request.form):
+    if "lang" in request.form:
         session["language"] = request.form["lang"]
         return True
     return False
