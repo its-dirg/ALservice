@@ -1,34 +1,50 @@
-from urllib.parse import parse_qs
+import logging
+from urllib.parse import parse_qs, parse_qsl
 
+import jwkest
 from flask.blueprints import Blueprint
-from flask.globals import request, current_app, session
+from flask.globals import current_app, session, request
 from flask_mako import render_template
+from jwkest import jws
 from werkzeug.exceptions import abort
 from werkzeug.utils import redirect
 
-from alservice.al import JWTHandler
+from alservice.al import IdRequest
 from alservice.exception import ALserviceNoSuchKey, ALserviceAuthenticationError, ALserviceTokenError, \
     ALserviceTicketError, ALserviceNotAValidPin
+
+logger = logging.getLogger(__name__)
 
 account_linking_views = Blueprint('account_linking_service', __name__, url_prefix='')
 
 
 @account_linking_views.route("/get_id")
 def get_id():
-    parsed_qs = parse_qs(request.query_string.decode())
-    jwt = None
+    parsed_qs = dict(parse_qsl(request.query_string.decode()))
     try:
-        jwt = parsed_qs["jwt"][0]
+        jwt = parsed_qs["jwt"]
     except KeyError:
         abort(400)
-    jso = JWTHandler.unpack_jwt(jwt, current_app.al.trusted_keys) # TODO don't dig out trusted_keys like this
-    key = JWTHandler.key(jso)
+
     try:
-        uuid = current_app.al.get_uuid(key)
+        params = jws.factory(jwt).verify_compact(jwt, current_app.al.trusted_keys)
+    except jwkest.Invalid as e:
+        logger.debug("received invalid id request: %s", jwt)
+        abort(400)
+
+    try:
+        data = IdRequest(params)
+    except ValueError:
+        logger.debug("received invalid id request: %s", params)
+        abort(400)
+
+    try:
+        uuid = current_app.al.get_uuid(data.key)
+        return uuid, 200
     except ALserviceNoSuchKey:
-        ticket = current_app.al.create_ticket(key, jso["idp"], jso["redirect_endpoint"])
+        logger.debug("no key found for request: ", data)
+        ticket = current_app.al.create_ticket(data.key, data["idp"], data["redirect_endpoint"])
         return ticket, 404
-    return uuid, 200
 
 
 @account_linking_views.route("/approve/<ticket>", methods=['POST', 'GET'])
