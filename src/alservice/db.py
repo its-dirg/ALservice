@@ -39,7 +39,7 @@ class TokenState(object):
         self.email_hash = email_hash
 
 
-class ALdatabase(object):
+class AccountLinkingDB(object):
     TOKEN = "token"
     TICKET = "ticket"
     KEY = "key"
@@ -75,7 +75,7 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.KEY: key
+                AccountLinkingDB.KEY: key
             }
         )
 
@@ -90,10 +90,10 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.TICKET: ticket,
-                ALdatabase.KEY: key,
-                ALdatabase.IDP: idp,
-                ALdatabase.REDIRECT: redirect,
+                AccountLinkingDB.TICKET: ticket,
+                AccountLinkingDB.KEY: key,
+                AccountLinkingDB.IDP: idp,
+                AccountLinkingDB.REDIRECT: redirect,
             }
         )
 
@@ -106,8 +106,8 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.TOKEN: token,
-                ALdatabase.EMAIL_HASH: email_hash
+                AccountLinkingDB.TOKEN: token,
+                AccountLinkingDB.EMAIL_HASH: email_hash
             }
         )
 
@@ -120,7 +120,7 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.TOKEN: token
+                AccountLinkingDB.TOKEN: token
             }
         )
 
@@ -133,7 +133,7 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.TICKET: ticket
+                AccountLinkingDB.TICKET: ticket
             }
         )
 
@@ -147,9 +147,9 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.EMAIL_HASH: email_hash,
-                ALdatabase.PIN_HASH: pin_hash,
-                ALdatabase.UUID: uuid
+                AccountLinkingDB.EMAIL_HASH: email_hash,
+                AccountLinkingDB.PIN_HASH: pin_hash,
+                AccountLinkingDB.UUID: uuid
             }
         )
 
@@ -163,9 +163,9 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.KEY: key,
-                ALdatabase.IDP: idp,
-                ALdatabase.EMAIL_HASH: email_hash
+                AccountLinkingDB.KEY: key,
+                AccountLinkingDB.IDP: idp,
+                AccountLinkingDB.EMAIL_HASH: email_hash
             }
         )
 
@@ -178,8 +178,8 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.IDP: idp,
-                ALdatabase.EMAIL_HASH: email_hash
+                AccountLinkingDB.IDP: idp,
+                AccountLinkingDB.EMAIL_HASH: email_hash
             }
         )
 
@@ -191,8 +191,8 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.EMAIL_HASH: email_hash,
-                ALdatabase.PIN_HASH: pin_hash
+                AccountLinkingDB.EMAIL_HASH: email_hash,
+                AccountLinkingDB.PIN_HASH: pin_hash
             }
         )
 
@@ -203,7 +203,7 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.TICKET: ticket
+                AccountLinkingDB.TICKET: ticket
             }
         )
 
@@ -214,7 +214,7 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.TOKEN: token
+                AccountLinkingDB.TOKEN: token
             }
         )
 
@@ -225,7 +225,7 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.EMAIL_HASH: email_hash
+                AccountLinkingDB.EMAIL_HASH: email_hash
             }
         )
 
@@ -238,9 +238,9 @@ class ALdatabase(object):
         """
         ALDictDatabase.validation(
             {
-                ALdatabase.EMAIL_HASH: email_hash,
-                ALdatabase.OLD_PIN_HASH: old_pin_hash,
-                ALdatabase.NEW_PIN_HASH: new_pin_hash,
+                AccountLinkingDB.EMAIL_HASH: email_hash,
+                AccountLinkingDB.OLD_PIN_HASH: old_pin_hash,
+                AccountLinkingDB.NEW_PIN_HASH: new_pin_hash,
             }
         )
 
@@ -259,7 +259,7 @@ class ALdatabase(object):
         return
 
 
-class ALDictDatabase(ALdatabase):
+class ALDictDatabase(AccountLinkingDB):
     TICKET_TICKET_PRIMARY = "ticket"
     TICKET_TIMESTAMP = "timestamp"
     TICKET_KEY = "key"
@@ -588,7 +588,7 @@ class ALDictDatabase(ALdatabase):
             return self.account_to_link[email_hash]
         return None
 
-class ALSQLiteDatabase(ALdatabase):
+class ALSQLiteDatabase(AccountLinkingDB):
     TICKET_TABLE_NAME = "ticket_table"
     TOKEN_TABLE_NAME = "token_table"
     ACCOUNT_TABLE_NAME = "account_table"

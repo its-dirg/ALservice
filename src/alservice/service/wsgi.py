@@ -11,7 +11,7 @@ from jwkest.jwk import rsa_load, RSAKey
 from mako.lookup import TemplateLookup
 
 from alservice.al import AccountLinking
-from alservice.db import ALdatabase
+from alservice.db import AccountLinkingDB
 from alservice.mail import EmailSmtp, Email
 from alservice.service.views import get_browser_lang
 
@@ -43,7 +43,7 @@ def init_account_linking(app: Flask, mail_client: Email = None):
 
     email_sender = mail_client or EmailSmtp(message_subject, message, message_from, smtp_server)
     database_class = import_database_class(app.config['DATABASE_CLASS_PATH'])
-    if not issubclass(database_class, ALdatabase):
+    if not issubclass(database_class, AccountLinkingDB):
         raise ValueError("%s does not inherit from ALdatabase" % database_class)
     database = database_class(*app.config['DATABASE_CLASS_PARAMETERS'])
 
