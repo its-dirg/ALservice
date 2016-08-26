@@ -72,30 +72,26 @@ def approve(ticket):
 @account_linking_views.route("/create_account", methods=["POST"])
 def create_account():
     change_language()
-    return render_template('create_account.mako',
+    return render_template("create_account.mako",
                            name="mako",
-                           form_action='/create_account',
+                           form_action="/create_account",
                            language=session["language"])
 
 
-@account_linking_views.route("/send_token", methods=["POST", "GET"])
+@account_linking_views.route("/send_token", methods=["POST"])
 def send_token():
     if not change_language():
-        email = None
-        ticket = None
-        try:
-            try:
-                email = request.form["email"]
-                session["email"] = email
-            except KeyError:
-                email = session["email"]
-            ticket = session["ticket"]
-        except KeyError:
+        email = request.form.get("email", session.get("email"))
+        ticket = session.get("ticket")
+        if not email or not ticket:
             abort(400)
+
+        session["email"] = email
         current_app.al.create_account_step1(email, ticket)
+
     return render_template("token_was_sent.mako",
                            name="mako",
-                           form_action='/send_token',
+                           form_action="/send_token",
                            email=session["email"],
                            token_error=False,
                            language=session["language"])
