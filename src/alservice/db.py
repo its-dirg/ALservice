@@ -244,20 +244,6 @@ class AccountLinkingDB(object):
             }
         )
 
-    @abstractmethod
-    def db_empty(self) -> bool:
-        """
-        :return: Returns true if all tables is the database is empty
-        """
-        return
-
-    @abstractmethod
-    def db_clear(self):
-        """
-        :return: Clears all tables in the database
-        """
-        return
-
 
 class ALDictDatabase(AccountLinkingDB):
     TICKET_TICKET_PRIMARY = "ticket"
@@ -563,30 +549,11 @@ class ALDictDatabase(AccountLinkingDB):
                 raise ALserviceDbUnknownError() from error
             raise
 
-    def db_empty(self) -> bool:
-        """
-        See ALdatabase#db_empty
-        """
-
-        return ((len(self.ticket) + len(self.token) + len(self.account) + len(self.key_to_link) +
-                 len(self.link_to_key) + len(self.account_to_link)) == 0)
-
-    def db_clear(self):
-        """
-        See ALdatabase#db_clear
-        """
-
-        self.ticket = {}
-        self.token = {}
-        self.account = {}
-        self.key_to_link = {}
-        self.link_to_key = {}
-        self.account_to_link = {}
-
     def _get_account_link_data(self, email_hash: str) -> list:
         if email_hash in self.account_to_link:
             return self.account_to_link[email_hash]
         return None
+
 
 class ALSQLiteDatabase(AccountLinkingDB):
     TICKET_TABLE_NAME = "ticket_table"
@@ -665,14 +632,6 @@ class ALSQLiteDatabase(AccountLinkingDB):
             raise ALserviceDbUnknownError() from error
         LOGGER.exception("Unkown error while getting uuid.")
         raise
-
-    def db_empty(self) -> bool:
-        """
-        See ALdatabase#db_empty
-        """
-        return (self.ticket_table.count() + self.token_table.count() +
-                self.account_table.count() + self.key_to_link_table.count() +
-                self.link_to_key_table.count() + self.account_to_link_table.count() == 0)
 
     def create_account(self, email_hash: str, pin_hash: str, uuid: str):
         """
@@ -864,11 +823,3 @@ class ALSQLiteDatabase(AccountLinkingDB):
             self.account_table.upsert(row, [ALDictDatabase.ACCOUNT_EMAIL_HASH_PRIMARY])
         except Exception as error:
             self.handle_exception(error)
-
-    def db_clear(self):
-        self.ticket_table.delete()
-        self.token_table.delete()
-        self.account_table.delete()
-        self.key_to_link_table.delete()
-        self.link_to_key_table.delete()
-        self.account_to_link_table.delete()
