@@ -9,7 +9,7 @@ from base64 import urlsafe_b64encode
 from time import mktime, gmtime
 from uuid import uuid4
 
-from alservice.db import ALdatabase
+from alservice.db import AccountLinkingDB
 from alservice.exception import ALserviceTokenError, ALserviceAuthenticationError, \
     ALserviceDbKeyDoNotExistsError, ALserviceTicketError, ALserviceDbNotUniqueTokenError, \
     ALserviceAccountExists, ALserviceNoSuchKey, ALserviceNotAValidPin
@@ -49,7 +49,7 @@ class AccountLinking(object):
     Handles account linking logic
     """
 
-    def __init__(self, trusted_keys: list, db: ALdatabase, salt: str, email_sender_create_account: Email,
+    def __init__(self, trusted_keys: list, db: AccountLinkingDB, salt: str, email_sender_create_account: Email,
                  email_sender_pin_recovery: Email = None, pin_verify: str = None, pin_empty: bool = True):
         """
         Constructor.

@@ -1,7 +1,7 @@
 import pytest
 
 from alservice.al import AccountLinking, Email, IdRequest
-from alservice.db import ALDictDatabase
+from alservice.db import ALDatasetDatabase
 from alservice.exception import ALserviceTicketError, \
     ALserviceTokenError, ALserviceAccountExists, ALserviceAuthenticationError, ALserviceNoSuchKey
 
@@ -39,7 +39,7 @@ class TestAL(object):
         self.test_id = "my_id"
         self.account_linking_request = IdRequest({"id": self.test_id, "idp": self.test_idp,
                                                   "redirect_endpoint": "https://client.example.com/redirect"})
-        self.db = ALDictDatabase()
+        self.db = ALDatasetDatabase()
         self.al = AccountLinking(
             trusted_keys=[],
             db=self.db,
@@ -196,7 +196,7 @@ class TestAL(object):
         None,
         "NotOK",
     ])
-    def test_verify_pin_should_raise_exception_for_invalid_pin(self, invalid_pin):
+    def test_verify_pin_for_invalid_pin(self, invalid_pin):
         assert self.al._verify_pin(invalid_pin) is False
 
     @pytest.mark.parametrize("valid_pin", [

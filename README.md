@@ -46,8 +46,7 @@ ALSERVICE_CONFIG=<path to settings.cfg> gunicorn alservice.service.run:app
 | PORT | Integer | 8167 | Port on which the ALservice should start |
 | HOST | String | "127.0.0.1" | The IP-address on which the ALservice should run |
 | DEBUG | boolean | False | Turn on or off the Flask servers internal debugging, should be turned off to ensure that all log information get stored in the log file |
-| DATABASE_CLASS_PATH | String | "alservice.db.ALSQLiteDatabase" | Specifies which python database class the ALservice should use. Currently there exists two modules ALDictDatabase and ALSQLiteDatabase |
-| DATABASE_CLASS_PARAMETERS | List of strings | ["test.db"] | Input parameters which should be passed into the database class specified above. ALSQLiteDatabase needs a single parameter, a path where the database should be stored. ALDictDatabase does not take any parameters so [] should be specified |
+| DATABASE_URL | String | "mysql://localhost:3306/test" | URL to SQLite/MySQL/Postgres database, if not supplied an in-memory SQLite database will be used |
 | AUTO_SELECT_ATTRIBUTES | boolean | True | Specifies if all the attributes in the GUI should be selected or not |
 | MAX_CONSENT_EXPIRATION_MONTH | Integer | 12 | The maximum numbers of months a consent could be valid |
 | USER_CONSENT_EXPIRATION_MONTH | List of integers | [3, 6] | A list of alternatives for how many months a user wants to give consent |

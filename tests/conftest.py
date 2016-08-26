@@ -65,8 +65,7 @@ def app_config(cert_and_key):
         MESSAGE_SUBJECT="Account registration",
         SMTP_SERVER="mail.example.com",
         SALT="fg9024jk5rmfdsvp0upASDIOPUmfadsf0qw3",
-        DATABASE_CLASS_PATH="alservice.db.ALDictDatabase",
-        DATABASE_CLASS_PARAMETERS=[],
+        DATABASE_URL=None,
         PIN_CHECK="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{6,20})",
         PIN_EMPTY=False
     )
