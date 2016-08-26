@@ -1,6 +1,6 @@
 import pytest
 
-from alservice.al import AccountLinking, Email, JWTHandler
+from alservice.al import AccountLinking, Email, IdRequest
 from alservice.db import ALDictDatabase
 from alservice.exception import ALserviceTicketError, \
     ALserviceTokenError, ALserviceAccountExists, ALserviceAuthenticationError, ALserviceNoSuchKey, \
@@ -32,11 +32,7 @@ class TestAL(object):
     @pytest.fixture(autouse=True)
     def setup(self):
         self.my_idp = "my_idp"
-        jso = {
-            "id": "my_id",
-            "idp": self.my_idp
-        }
-        self.my_key = JWTHandler.key(jso)
+        self.my_key = "my_key"
         self.db = ALDictDatabase()
         self.al = AccountLinking(
             trusted_keys=[],

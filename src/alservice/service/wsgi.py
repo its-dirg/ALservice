@@ -10,15 +10,16 @@ from flask_mako import MakoTemplates
 from jwkest.jwk import rsa_load, RSAKey
 from mako.lookup import TemplateLookup
 
-from alservice.al import EmailSmtp, AccountLinking, Email
+from alservice.al import AccountLinking
 from alservice.db import ALdatabase
+from alservice.mail import EmailSmtp, Email
 from alservice.service.views import get_browser_lang
 
 
 def get_locale():
     try:
         return session["language"]
-    except:
+    except KeyError:
         return get_browser_lang()
 
 

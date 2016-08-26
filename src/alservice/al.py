@@ -1,119 +1,50 @@
 """
 Module for handling account linking
 """
-from abc import abstractmethod
-from base64 import urlsafe_b64encode
-from email.header import Header
-from email.mime.text import MIMEText
 import hashlib
 import logging
 import random
-import smtplib
 import re
+from base64 import urlsafe_b64encode
 from time import mktime, gmtime
 from uuid import uuid4
+
+import jwkest
 from jwkest import jws
-from jwkest.jwt import JWT
+
 from alservice.db import ALdatabase
 from alservice.exception import ALserviceTokenError, ALserviceAuthenticationError, \
     ALserviceDbKeyDoNotExistsError, ALserviceTicketError, ALserviceDbNotUniqueTokenError, \
     ALserviceAccountExists, ALserviceNoSuchKey, ALserviceNotAValidPin
+from alservice.mail import Email
 
 LOGGER = logging.getLogger(__name__)
 
 
-class Email(object):
-    """
-    Base class for sending a token with mail
-    """
-    @abstractmethod
-    def send_mail(self, token: str, email_to: str):
-        """
-        Sends a mail
-        :param token: Token to send
-        :param email_to: Where to send the token
-        """
-        pass
+class IdRequest:
+    def __init__(self, data: dict):
+        mandatory_params = {"id", "idp", "redirect_endpoint"}
+        if not mandatory_params.issubset(set(data.keys())):
+            # missing required info
+            raise ValueError(
+                "Incorrect account linking request, missing some mandatory params".format(mandatory_params))
+        self.data = data
 
-
-class EmailSmtp(Email):
-    """
-    An implementation of Email using smtp
-    """
-    TOKEN_REPLACE = "<<token>>"
-
-    def __init__(self, subject: str, message: str, email_from: str, smtp_server: str):
-        self.subject = subject
-        """:type: str"""
-
-        self.message = message
-        """:type: str"""
-
-        self.email_from = email_from
-        """:type: str"""
-
-        self.smtp_server = smtp_server
-        """:type: str"""
-
-    def send_mail(self, token: str, email_to: str):
-        """
-        Sends a mail
-        :param token: Token to send
-        :param email_to: Where to send the token
-        """
-        message = self.message.replace(EmailSmtp.TOKEN_REPLACE, token)
-        msg = MIMEText(message, "plain", "utf-8")
-        msg['Subject'] = Header(self.subject, 'utf-8').encode()
-        msg['From'] = "\"{sender}\" <{sender}>".format(sender=self.email_from)
-        msg['To'] = email_to
-        s = smtplib.SMTP(self.smtp_server)
-        failed = s.sendmail(self.email_from, email_to, msg.as_string())
-        s.quit()
-
-
-class JWTHandler(object):
-    """
-    Handles jwt
-    """
-    @staticmethod
-    def key(jso: dict):
+    @property
+    def key(self):
         """
         Retrieve the hash key for the idp/id pair
         :rtype: str
         :param jso: The unpacked jwt
         :return: A key
         """
-        idp = jso["idp"]
-        id = jso["id"]
-        return hashlib.sha512((idp + id).encode()).hexdigest()
+        return hashlib.sha512((self.data["idp"] + self.data["id"]).encode()).hexdigest()
 
-    @staticmethod
-    def _verify_jwt(jwt: str, keys: list):
-        """
-        Verify teh signature of the jwt
-        :type keys: list[str]
-        :param jwt: A signed jwt
-        :param keys: A list of keys to use when verifying the signature
-        """
-        _jw = jws.factory(jwt)
-        _jw.verify_compact(jwt, keys)
+    def __getitem__(self, item):
+        return self.data[item]
 
-    @staticmethod
-    def unpack_jwt(jwt: str, keys: list):
-        """
-        Unpacks a signed jwt question
-        :type keys: list[str]
-        :rtype: dict[str, str]
-        :param jwt: A signed jwt containing the question (the idp, id and redirect_endpoint)
-        :param keys: A list of keys to use when verifying the signature
-        :return: The unpacked jwt
-        """
-        JWTHandler._verify_jwt(jwt, keys)
-        _jwt = JWT().unpack(jwt)
-        jso = _jwt.payload()
-        if "id" not in jso or "idp" not in jso or "redirect_endpoint" not in jso:
-            return None
-        return jso
+    def __str__(self):
+        return "{} -> {}".format(self.key, str(self.data))
 
 
 class AccountLinking(object):
@@ -169,16 +100,15 @@ class AccountLinking(object):
 
     def get_uuid(self, key: str):
         """
-        Get the user id bound to the given key
-        :param key: Key to user id
-        :return: An user ID
+        Gets the account id bound to the user identified in the request.
+        :param key: user account key
+        :return: a user id.
         """
         try:
-            uuid = self.db.get_uuid(key)
+            return self.db.get_uuid(key)
         except ALserviceDbKeyDoNotExistsError as error:
             LOGGER.info("Key (%s) not existing in database, user must link this account!", key)
             raise ALserviceNoSuchKey() from error
-        return uuid
 
     @staticmethod
     def create_token(value: str, salt: str):
