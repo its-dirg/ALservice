@@ -19,7 +19,7 @@ from alservice.service.views import get_browser_lang
 def get_locale():
     try:
         return session["language"]
-    except:
+    except KeyError:
         return get_browser_lang()
 
 
