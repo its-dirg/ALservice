@@ -1,5 +1,5 @@
 import logging
-from urllib.parse import parse_qs, parse_qsl
+from urllib.parse import parse_qsl
 
 import jwkest
 from flask.blueprints import Blueprint
@@ -47,31 +47,26 @@ def get_id():
         return ticket, 404
 
 
-@account_linking_views.route("/approve/<ticket>", methods=['POST', 'GET'])
+@account_linking_views.route("/approve/<ticket>", methods=["POST", "GET"])
 def approve(ticket):
+    template_params = dict(name="mako", form_action='/approve/%s' % ticket, ticket=ticket, login_failed_message=False)
+
     if not change_language():
         session["ticket"] = ticket
-        if request.method == 'POST':
+
+        # user has approved linking
+        if request.method == "POST":
             email = request.form["email"]
             pin = request.form["pin"]
+            redirect_url = current_app.al.get_redirect_url(ticket)
             try:
-                redirect_url = current_app.al.get_redirect_url(ticket)
                 current_app.al.link_key(email, pin, ticket)
                 return redirect(redirect_url)
             except ALserviceAuthenticationError:
-                return render_template('login.mako',
-                                       name="mako",
-                                       form_action='/approve/%s' % ticket,
-                                       ticket=ticket,
-                                       login_failed_message=True,
-                                       language=session["language"])
+                template_params["login_failed_message"] = True
 
-    return render_template('login.mako',
-                           name="mako",
-                           form_action='/approve/%s' % ticket,
-                           ticket=ticket,
-                           login_failed_message=False,
-                           language=session["language"])
+    template_params["language"] = session["language"]
+    return render_template("login.mako", **template_params)
 
 
 @account_linking_views.route("/create_account", methods=["POST"])
