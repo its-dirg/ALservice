@@ -49,7 +49,7 @@ def get_id():
 
 @account_linking_views.route("/approve/<ticket>", methods=["POST", "GET"])
 def approve(ticket):
-    template_params = dict(name="mako", form_action='/approve/%s' % ticket, ticket=ticket, login_failed_message=False)
+    template_params = dict(form_action='/approve/%s' % ticket, ticket=ticket, login_failed_message=False)
 
     if not change_language():
         session["ticket"] = ticket
@@ -73,7 +73,6 @@ def approve(ticket):
 def create_account():
     change_language()
     return render_template("create_account.mako",
-                           name="mako",
                            form_action="/create_account",
                            language=session["language"])
 
@@ -90,7 +89,6 @@ def send_token():
         current_app.al.create_account_step1(email, ticket)
 
     return render_template("token_was_sent.mako",
-                           name="mako",
                            form_action="/send_token",
                            email=session["email"],
                            token_error=False,
@@ -107,7 +105,6 @@ def verify_token():
             current_app.al.create_account_step2(token)
         except (ALserviceTokenError, ALserviceTicketError):
             return render_template("token_was_sent.mako",
-                                   name="mako",
                                    form_action='/verify_token',
                                    email=session["email"],
                                    token_error=True,
@@ -116,7 +113,6 @@ def verify_token():
             abort(400)
 
     return render_template("save_account.mako",
-                           name="mako",
                            form_action='/verify_token',
                            pin_error=False,
                            language=session["language"])
@@ -131,7 +127,6 @@ def verify_pin():
         current_app.al.create_account_step3(token, pin)
     except ALserviceNotAValidPin:
         return render_template("save_account.mako",
-                               name="mako",
                                form_action='/verify_token',
                                pin_error=True,
                                language=session["language"])
