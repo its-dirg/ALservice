@@ -1,8 +1,9 @@
+import hashlib
+import json
+import logging
 from abc import abstractmethod
 from datetime import datetime
-import hashlib
-import logging
-import json
+
 import dataset
 from sqlalchemy.exc import IntegrityError
 
@@ -14,13 +15,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 class TicketState(object):
-    def __init__(self, timestamp: datetime, key: str, idp: str, redirect:str):
+    def __init__(self, timestamp: datetime, key: str, idp: str, redirect: str):
         """
-
-        :param timestamp: Time when the ticket state where created
-        :param key: A key on which the ticket is based
-        :param idp: The IDP which you want to connect to a user
-        :param redirect: An URL to which the user should be redirected when flow is completed
+        Constructor.
+        :param timestamp: when the ticket state was created
+        :param key: account key on which the ticket is based
+        :param idp: which IdP the user is from
+        :param redirect: URL to which the user should be redirected when account linking is completed
         """
         self.timestamp = timestamp
         self.key = key
@@ -31,9 +32,9 @@ class TicketState(object):
 class TokenState(object):
     def __init__(self, timestamp: datetime, email_hash: str):
         """
-
-        :param timestamp: Time when the token where created
-        :param email_hash: Hash value of an email address
+        Constructor.
+        :param timestamp: when the token was created
+        :param email_hash: hash value of the users account email address
         """
         self.timestamp = timestamp
         self.email_hash = email_hash
