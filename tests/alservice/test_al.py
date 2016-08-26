@@ -196,7 +196,7 @@ class TestAL(object):
         None,
         "NotOK",
     ])
-    def test_verify_pin_should_raise_exception_for_invalid_pin(self, invalid_pin):
+    def test_verify_pin_for_invalid_pin(self, invalid_pin):
         assert self.al._verify_pin(invalid_pin) is False
 
     @pytest.mark.parametrize("valid_pin", [
