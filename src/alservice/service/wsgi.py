@@ -1,6 +1,5 @@
 import logging
 import sys
-from importlib import import_module
 
 import pkg_resources
 from flask.app import Flask
@@ -11,7 +10,7 @@ from jwkest.jwk import rsa_load, RSAKey
 from mako.lookup import TemplateLookup
 
 from alservice.al import AccountLinking
-from alservice.db import AccountLinkingDB
+from alservice.db import ALDatasetDatabase
 from alservice.mail import EmailSmtp, Email
 from alservice.service.views import get_browser_lang
 
@@ -21,13 +20,6 @@ def get_locale():
         return session["language"]
     except KeyError:
         return get_browser_lang()
-
-
-def import_database_class(db_class):
-    path, _class = db_class.rsplit('.', 1)
-    module = import_module(path)
-    database_class = getattr(module, _class)
-    return database_class
 
 
 def init_account_linking(app: Flask, mail_client: Email = None):
@@ -42,10 +34,7 @@ def init_account_linking(app: Flask, mail_client: Email = None):
     smtp_server = app.config["SMTP_SERVER"]
 
     email_sender = mail_client or EmailSmtp(message_subject, message, message_from, smtp_server)
-    database_class = import_database_class(app.config['DATABASE_CLASS_PATH'])
-    if not issubclass(database_class, AccountLinkingDB):
-        raise ValueError("%s does not inherit from ALdatabase" % database_class)
-    database = database_class(*app.config['DATABASE_CLASS_PARAMETERS'])
+    database = ALDatasetDatabase(app.config.get("DATABASE_URL"))
 
     al = AccountLinking(trusted_keys, database, salt, email_sender, pin_verify=app.config["PIN_CHECK"],
                         pin_empty=app.config["PIN_EMPTY"])
