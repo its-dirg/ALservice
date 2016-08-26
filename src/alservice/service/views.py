@@ -98,10 +98,12 @@ def send_token():
 @account_linking_views.route("/verify_token", methods=["POST"])
 def verify_token():
     if not change_language():
-        if "token" in request.form:
-            session["token"] = request.form["token"]
+        token = request.form.get("token", session.get("token"))
+        if not token:
+            abort(400)
+
+        session["token"] = token
         try:
-            token = session["token"]
             current_app.al.create_account_step2(token)
         except (ALserviceTokenError, ALserviceTicketError):
             return render_template("token_was_sent.mako",
@@ -109,8 +111,6 @@ def verify_token():
                                    email=session["email"],
                                    token_error=True,
                                    language=session["language"])
-        except KeyError:
-            abort(400)
 
     return render_template("save_account.mako",
                            form_action='/verify_token',
