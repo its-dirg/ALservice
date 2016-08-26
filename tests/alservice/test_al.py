@@ -3,8 +3,7 @@ import pytest
 from alservice.al import AccountLinking, Email, IdRequest
 from alservice.db import ALDictDatabase
 from alservice.exception import ALserviceTicketError, \
-    ALserviceTokenError, ALserviceAccountExists, ALserviceAuthenticationError, ALserviceNoSuchKey, \
-    ALserviceNotAValidPin
+    ALserviceTokenError, ALserviceAccountExists, ALserviceAuthenticationError, ALserviceNoSuchKey
 
 
 class EmailFake(Email):
@@ -18,8 +17,13 @@ class EmailFake(Email):
 
 
 class TestAL(object):
-    def create_account(self, pin, email="my_email", key=None, idp=None):
-        ticket = self.al.create_ticket(key or self.my_key, idp or self.my_idp, "my_redirect")
+    def create_account(self, pin, email="my_email", id=None, idp=None):
+        if id or idp:
+            request = IdRequest({"id": id or self.test_id, "idp": idp or self.test_idp,
+                                 "redirect_endpoint": "https://client.example.com/redirect"})
+        else:
+            request = self.account_linking_request
+        ticket = self.al.create_ticket(request)
         self.al.create_account_step1(email, ticket)
         assert self.al.email_sender_create_account.email_to == email
         assert self.al.email_sender_create_account.token is not None
@@ -31,8 +35,10 @@ class TestAL(object):
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.my_idp = "my_idp"
-        self.my_key = "my_key"
+        self.test_idp = "my_idp"
+        self.test_id = "my_id"
+        self.account_linking_request = IdRequest({"id": self.test_id, "idp": self.test_idp,
+                                                  "redirect_endpoint": "https://client.example.com/redirect"})
         self.db = ALDictDatabase()
         self.al = AccountLinking(
             trusted_keys=[],
@@ -60,7 +66,7 @@ class TestAL(object):
             self.al.create_account_step2("unknown_token.unknown_ticket")
 
     def test_create_account_step2_should_raise_token_exception_for_unknown_token_and_known_ticket(self):
-        ticket = self.al.create_ticket(self.my_key, self.my_idp, "my_redirect")
+        ticket = self.al.create_ticket(self.account_linking_request)
         with pytest.raises(ALserviceTokenError):
             self.al.create_account_step2("unknown_token.{}".format(ticket))
 
@@ -73,7 +79,7 @@ class TestAL(object):
             self.al.create_account_step3("incorrect_token.incorrect_ticket", "")
 
     def test_create_account_step3_should_raise_ticket_exception_for_unknown_token_and_known_ticket(self):
-        ticket = self.al.create_ticket(self.my_key, self.my_idp, "my_redirect")
+        ticket = self.al.create_ticket(self.account_linking_request)
         self.al.create_account_step1("my_email", ticket)
         token = self.al.email_sender_create_account.token
         verified_token = self.al.create_account_step2(token)
@@ -85,16 +91,17 @@ class TestAL(object):
     def test_create_account_flow(self, pin):
         self.create_account(pin)
 
-        uuid_1 = self.al.get_uuid(self.my_key)
-        uuid_2 = self.al.get_uuid(self.my_key)
+        uuid_1 = self.al.get_uuid(self.account_linking_request.key)
+        uuid_2 = self.al.get_uuid(self.account_linking_request.key)
         assert uuid_1 == uuid_2
 
     def test_create_account_step3_should_raise_exception_if_account_already_exists(self):
         pin = ""
-        self.create_account(pin)
+        email = "test@example.com"
+        self.create_account(pin, email)
 
-        ticket = self.al.create_ticket("my_new_key", self.my_idp, "my_redirect")
-        self.al.create_account_step1("my_email", ticket)
+        ticket = self.al.create_ticket(self.account_linking_request)
+        self.al.create_account_step1(email, ticket)
         token = self.al.email_sender_create_account.token
         token = self.al.create_account_step2(token)
 
@@ -105,7 +112,8 @@ class TestAL(object):
         pin = ""
         self.create_account(pin)
 
-        ticket = self.al.create_ticket("my_new_key", self.my_idp, "my_redirect")
+        ticket = self.al.create_ticket(
+            IdRequest({"id": "my_id", "idp": self.test_idp, "redirect_endpoint": "my_redirect"}))
         with pytest.raises(ALserviceAuthenticationError):
             self.al.link_key("my_email", "wrong_pin", ticket)
 
@@ -113,27 +121,30 @@ class TestAL(object):
         pin = ""
         self.create_account(pin)
 
-        ticket = self.al.create_ticket("my_new_key", self.my_idp, "my_redirect")
+        ticket = self.al.create_ticket(self.account_linking_request)
         with pytest.raises(ALserviceAuthenticationError):
             self.al.link_key("_wrong_my_email", pin, ticket)
 
     @pytest.mark.parametrize("pin", ["", "#NotSoEasy1", "ALiteBitHarder#2!435345#fdgdfg"])
     def test_change_account_linking(self, pin):
-        self.create_account(pin)
+        email = "test@example.com"
+        self.create_account(pin, email)
 
-        ticket = self.al.create_ticket("my_new_key", self.my_idp, "my_redirect")
+        new_request = IdRequest({"id": "new_id", "idp": self.account_linking_request["idp"],
+                                 "redirect_endpoint": self.account_linking_request["redirect_endpoint"]})
+        ticket = self.al.create_ticket(new_request)
         self.al.create_account_step1("my_email", ticket)
         token = self.al.email_sender_create_account.token
         self.al.create_account_step2(token)
 
-        self.al.link_key("my_email", pin, ticket)
-        uuid_1 = self.al.get_uuid("my_new_key")
-        uuid_2 = self.al.get_uuid("my_new_key")
+        self.al.link_key(email, pin, ticket)
+        uuid_1 = self.al.get_uuid(new_request.key)
+        uuid_2 = self.al.get_uuid(new_request.key)
         assert uuid_1 == uuid_2
 
         # the old key has been removed
         with pytest.raises(ALserviceNoSuchKey):
-            self.al.get_uuid(self.my_key)
+            self.al.get_uuid(self.test_id)
 
     def test_change_pin_step1_should_raise_exception_for_unknown_email(self):
         pin = "asdkhAas3#"
@@ -156,7 +167,7 @@ class TestAL(object):
         token = self.al.email_sender_pin_recovery.token
 
         with pytest.raises(ALserviceAuthenticationError):
-            self.al.change_pin_step2(token, pin + "_wrong", "my_new_pin123123#!")
+            self.al.change_pin_step2(token, pin + "_wrong", pin + "_new")
 
     def test_change_pin_step2_should_raise_exception_for_unknown_token(self):
         pin = "asdkhAas3#"
@@ -165,7 +176,7 @@ class TestAL(object):
         self.al.change_pin_step1(email, pin)
 
         with pytest.raises(ALserviceAuthenticationError):
-            self.al.change_pin_step2("unknown", pin, "4534j5khtAAfdgkjhgkjdfsh#")
+            self.al.change_pin_step2("unknown", pin, pin + "_new")
 
     def test_change_pin(self):
         pin = "#A4534j5khtfdgkjhgkjdfsh#"
@@ -175,10 +186,10 @@ class TestAL(object):
         token = self.al.email_sender_pin_recovery.token
         new_pin = "my_new_piAAn123123#!"
         self.al.change_pin_step2(token, pin, new_pin)
-        ticket = self.al.create_ticket(self.my_key, self.my_idp, "my_redirect")
+        ticket = self.al.create_ticket(self.account_linking_request)
         self.al.link_key("my_email", new_pin, ticket)
-        uuid_1 = self.al.get_uuid(self.my_key)
-        uuid_2 = self.al.get_uuid(self.my_key)
+        uuid_1 = self.al.get_uuid(self.account_linking_request.key)
+        uuid_2 = self.al.get_uuid(self.account_linking_request.key)
         assert uuid_1 == uuid_2
 
     @pytest.mark.parametrize("invalid_pin", [
@@ -186,8 +197,7 @@ class TestAL(object):
         "NotOK",
     ])
     def test_verify_pin_should_raise_exception_for_invalid_pin(self, invalid_pin):
-        with pytest.raises(ALserviceNotAValidPin):
-            self.al.verify_pin(invalid_pin)
+        assert self.al._verify_pin(invalid_pin) is False
 
     @pytest.mark.parametrize("valid_pin", [
         "aP1n##",
@@ -195,7 +205,7 @@ class TestAL(object):
     ])
     def test_verify_pin(self, valid_pin):
         # should not raise an exception
-        self.al.verify_pin(valid_pin)
+        self.al._verify_pin(valid_pin)
 
     def test_verify_pin_allow_empty(self):
         al = AccountLinking(trusted_keys=[],
@@ -206,5 +216,4 @@ class TestAL(object):
                             pin_verify="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{6,20})",
                             pin_empty=False)
 
-        with pytest.raises(ALserviceNotAValidPin):
-            al.verify_pin("")
+        assert al._verify_pin("") is False

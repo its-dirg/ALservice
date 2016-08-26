@@ -9,9 +9,6 @@ from base64 import urlsafe_b64encode
 from time import mktime, gmtime
 from uuid import uuid4
 
-import jwkest
-from jwkest import jws
-
 from alservice.db import ALdatabase
 from alservice.exception import ALserviceTokenError, ALserviceAuthenticationError, \
     ALserviceDbKeyDoNotExistsError, ALserviceTicketError, ALserviceDbNotUniqueTokenError, \
@@ -53,54 +50,50 @@ class AccountLinking(object):
     """
 
     def __init__(self, trusted_keys: list, db: ALdatabase, salt: str, email_sender_create_account: Email,
-                 email_sender_pin_recovery: Email = None, pin_verify: str = None,
-                 pin_empty: bool = True):
+                 email_sender_pin_recovery: Email = None, pin_verify: str = None, pin_empty: bool = True):
         """
-        :type keys: list[str]
-
-        :param db: Database to use
-        :param keys: Public keys to verify JWT signature.
-        :return:
+        Constructor.
+        :param trusted_keys: trusted public keys to verify JWT signatures
+        :param db: database to use
+        :param salt: salt to use when hashing identifiers
+        :param email_sender_create_account: strategy for sending email for new account
+        :param email_sender_pin_recovery: strategy for sending email for pin recovery
+        :param pin_verify: regular expression for verifying pin codes
+        :param pin_empty: whether to allow empty pin codes or not
         """
         self.pin_verify = None
         if pin_verify is not None:
             self.pin_verify = re.compile(pin_verify)
 
         self.trusted_keys = trusted_keys
-
         self.pin_empty = pin_empty
-        """:type: str"""
-
         self.db = db
-        """:type: ALdatabase"""
-
         self.salt = salt
-        """:type: str"""
-
         self.email_sender_create_account = email_sender_create_account
-        """:type: Email"""
-
         self.email_sender_pin_recovery = email_sender_pin_recovery
-        """:type: Email"""
 
-    def verify_pin(self, pin):
+    def _verify_pin(self, pin) -> bool:
         """
-        Verifies the given pin format
-        :param pin: The pin to verify
+        Verifies the given pin code against the required format.
+        :param pin: pin to verify
+        :return: True if the pin code is valid, otherwise False.
         """
         if pin is None:
-            LOGGER.warn("User entered wrong pin!")
-            raise ALserviceNotAValidPin()
-        if self.pin_empty and len(pin) == 0:
-            return
-        if self.pin_verify is None or self.pin_verify.match(pin):
-            return
-        LOGGER.warn("User entered wrong pin!")
-        raise ALserviceNotAValidPin()
+            return False
 
-    def get_uuid(self, key: str):
+        # pin code is empty and it's explicitly allowed
+        if len(pin) == 0 and self.pin_empty:
+            return True
+
+        # pin code fulfills required format
+        if self.pin_verify is None or self.pin_verify.match(pin):
+            return True
+
+        return False
+
+    def get_uuid(self, key: str) -> str:
         """
-        Gets the account id bound to the user identified in the request.
+        Gets the account id bound to the user identified by the key.
         :param key: user account key
         :return: a user id.
         """
@@ -110,43 +103,36 @@ class AccountLinking(object):
             LOGGER.info("Key (%s) not existing in database, user must link this account!", key)
             raise ALserviceNoSuchKey() from error
 
-    @staticmethod
-    def create_token(value: str, salt: str):
+    def _create_token(self, value: str) -> str:
         """
-        Create a hashed, urlsafe, token. The hash is also based on time and random number.
-        :rtype: str
+        Creates a token.
+        The token is bound to the value, together with the creation time and a random number.
 
         :param value: token base
-        :param salt: A salt for the hashing
-        :return: A token
+        :return: a token
         """
         token = urlsafe_b64encode(
-            hashlib.sha512((value + salt + str(mktime(gmtime())) + str(random.getrandbits(1024)))
+            hashlib.sha512((value + self.salt + str(mktime(gmtime())) + str(random.getrandbits(1024)))
                            .encode()).hexdigest().encode()).decode()
         return token
 
-    @staticmethod
-    def create_hash(value: str, salt: str):
+    def _create_hash(self, value: str) -> str:
         """
         Hash a value with a salt
-        :rtype: str
         :param value: The value to hash
-        :param salt: A salt for the hash
         :return: the hashed value
         """
-        hash_value = hashlib.sha512((value + salt).encode("UTF-8")).hexdigest()
+        hash_value = hashlib.sha512((value + self.salt).encode("UTF-8")).hexdigest()
         return hash_value
 
-    def create_ticket(self, key: str, idp: str, redirect: str):
+    def create_ticket(self, request: IdRequest):
         """
-        Save a key, idp and redirect_endpoint to the database with the returned ticket as key.
-        :param key: The key link for the al
-        :param idp: The linked idp
-        :param redirect: The redirect after approval
-        :return: A ticket (a key to the saved values)
+        Stores an account linking request, associated with the returned ticket.
+        :param request: account linking request
+        :return: the ticket associated with the request
         """
-        ticket = AccountLinking.create_token(key, self.salt)
-        self.db.save_ticket_state(ticket, key, idp, redirect)
+        ticket = self._create_token(request.key)
+        self.db.save_ticket_state(ticket, request.key, request["idp"], request["redirect_endpoint"])
         return ticket
 
     def create_account_step1(self, email: str, ticket: str):
@@ -154,76 +140,73 @@ class AccountLinking(object):
         The first step of creating an account.
         A token is sent to the specified email. This token need to be provided in the next
         account creation step.
-        :param email: Email address to send the token.
-        :param ticket: Needs a ticket to bind the token
+        :param email: email address to send the token
+        :param ticket: ticket to bind the token to
         """
         try:
             self.db.get_ticket_state(ticket)
         except ALserviceDbKeyDoNotExistsError as error:
-            LOGGER.exception("Ticket is missing (%s)!" % ticket)
+            LOGGER.exception("Ticket is missing (%s)!", ticket)
             raise ALserviceTicketError() from error
-        token = AccountLinking.create_token(email, self.salt)
+        token = self._create_token(email)
         token_ticket = "%s.%s" % (token, ticket)
-        email_hash = self.create_hash(email, self.salt)
+        email_hash = self._create_hash(email)
         self.db.save_token_state(token, email_hash)
         self.email_sender_create_account.send_mail(token_ticket, email)
 
-    @staticmethod
-    def _split_token(token: str):
+    def _split_token(self, token: str) -> list:
         """
-        Split a combined token in to token and ticket
-        :rtype: (str, str)
+        Splits a combined token in to token and ticket
         :param token: combined token
         :return: token and ticket
         """
-        try:
-            tokens = token.split(".")
-        except Exception as error:
-            LOGGER.exception("Incorrect token (%s)!" % token)
-            raise ALserviceTokenError() from error
-        if tokens is None or len(tokens) != 2:
-            LOGGER.exception("Incorrect token (%s)!" % token)
+        if token is None:
+            raise ALserviceTokenError()
+
+        tokens = token.split(".")
+        if len(tokens) != 2:
+            LOGGER.exception("Incorrect token (%s)!", token)
             raise ALserviceTokenError()
         return tokens
 
     def create_account_step2(self, token: str):
         """
         The second step of creating an account.
-        Verifies the token
-        :param token: Token to verify
-        :return: The same token
+        Verifies the token.
+        :param token: token to verify
+        :return: the verified token
         """
-        tokens = AccountLinking._split_token(token)
+        tokens = self._split_token(token)
         try:
             self.db.get_ticket_state(tokens[1])
         except ALserviceDbKeyDoNotExistsError as error:
-            LOGGER.exception("Incorrect ticket (%s)!" % tokens[1])
+            LOGGER.exception("Incorrect ticket (%s)!", tokens[1])
             raise ALserviceTicketError() from error
         try:
-            email_state = self.db.get_token_state(tokens[0])
+            self.db.get_token_state(tokens[0])
         except ALserviceDbKeyDoNotExistsError as error:
-            LOGGER.exception("Incorrect token (%s)!" % tokens[0])
+            LOGGER.exception("Incorrect token (%s)!", tokens[0])
             raise ALserviceTokenError() from error
         return token
 
-    def create_uuid(self):
+    def create_uuid(self) -> str:
         """
-        Create an uuid
-        :return: The created uuid
+        Creates an uuid
+        :return: the created uuid
         """
-        uuid = AccountLinking.create_token(uuid4().urn, self.salt)
+        uuid = self._create_token(uuid4().urn)
         try:
             while self.get_uuid(uuid):
-                uuid = AccountLinking.create_token(uuid4().urn, self.salt)
+                uuid = self._create_token(uuid4().urn)
         except ALserviceNoSuchKey:
             pass
         return uuid
 
-    def get_redirect_url(self, token: str):
+    def get_redirect_url(self, token: str) -> str:
         """
-        Get the redirect endpoint bound to the ticket/token
+        Gets the redirect endpoint bound to the ticket/token
         :param token: Key to redirect endpoint in db
-        :return: the redirect endpoint
+        :return: the redirect endpoint.
         """
         ticket = token
         if "." in ticket:
@@ -233,20 +216,21 @@ class AccountLinking(object):
 
     def create_account_step3(self, token: str, pin: str = ""):
         """
-        The third and last step of creating an account (And approving the new key link)
-        :param token: The account creation token
-        :param pin: Password for the account
+        The third and last step of creating an account
+        Approves the new account link and protects the account with a pin.
+        :param token: the account creation token
+        :param pin: pin code for the account
         """
-        self.verify_pin(pin)
-        tokens = AccountLinking._split_token(token)
+        if not self._verify_pin(pin):
+            raise ALserviceNotAValidPin()
+
+        tokens = self._split_token(token)
         try:
             email_state = self.db.get_token_state(tokens[0])
         except ALserviceDbKeyDoNotExistsError as error:
             LOGGER.exception("Incorrect ticket (%s)!" % tokens[0])
             raise ALserviceTokenError() from error
-        pin_hash = None
-        if pin is not None:
-            pin_hash = self.create_hash(pin, self.salt)
+
         try:
             ticket_state = self.db.get_ticket_state(tokens[1])
         except ALserviceDbKeyDoNotExistsError as error:
@@ -255,6 +239,10 @@ class AccountLinking(object):
         self.db.remove_ticket_state(tokens[1])
         self.db.remove_token_state(tokens[0])
         uuid = self.create_uuid()
+
+        pin_hash = None
+        if pin is not None:
+            pin_hash = self._create_hash(pin)
         try:
             self.db.create_account(email_state.email_hash, pin_hash, uuid)
         except ALserviceDbNotUniqueTokenError as error:
@@ -268,15 +256,16 @@ class AccountLinking(object):
 
     def link_key(self, email: str, pin: str, ticket: str):
         """
-        Link a new key to the account.
-        :param email: The account email (Username)
-        :param pin: The account pin (Password)
-        :param ticket: The ticket for the key link information
+        Links a new key to the account.
+        :param email: the account email
+        :param pin: the account pin code
+        :param ticket: ticket for the key link information
         """
         try:
-            email_hash = self.create_hash(email, self.salt)
-            pin_hash = self.create_hash(pin, self.salt)
+            email_hash = self._create_hash(email)
+            pin_hash = self._create_hash(pin)
             self.db.verify_account(email_hash, pin_hash)
+
             ticket_data = self.db.get_ticket_state(ticket)
             self.db.remove_ticket_state(ticket)
             self.db.create_link(ticket_data.key, ticket_data.idp, email_hash)
@@ -288,14 +277,14 @@ class AccountLinking(object):
         """
         The first step of changing an account pin.
         Sends a token to the account email address
-        :param email: Account email (Username)
-        :param pin: Password
+        :param email: the account email
+        :param pin: the account pin code
         """
         try:
-            email_hash = self.create_hash(email, self.salt)
-            pin_hash = self.create_hash(pin, self.salt)
+            email_hash = self._create_hash(email)
+            pin_hash = self._create_hash(pin)
             self.db.verify_account(email_hash, pin_hash)
-            token = AccountLinking.create_token(email_hash, self.salt)
+            token = self._create_token(email_hash)
             self.db.save_token_state(token, email_hash)
             self.email_sender_pin_recovery.send_mail(token, email)
         except Exception as error:
@@ -310,12 +299,14 @@ class AccountLinking(object):
         :param old_pin: The old password
         :param new_pin: The new password
         """
+        if not self._verify_pin(new_pin):
+            raise ALserviceNotAValidPin("The new pin code was invalid")
+
         try:
-            self.verify_pin(new_pin)
             email_state = self.db.get_token_state(token)
-            old_pin_hash = self.create_hash(old_pin, self.salt)
+            old_pin_hash = self._create_hash(old_pin)
             self.db.verify_account(email_state.email_hash, old_pin_hash)
-            new_pin_hash = self.create_hash(new_pin, self.salt)
+            new_pin_hash = self._create_hash(new_pin)
             self.db.change_pin(email_state.email_hash, old_pin_hash, new_pin_hash)
         except Exception as error:
             LOGGER.exception("Unknown error while changing pin.")

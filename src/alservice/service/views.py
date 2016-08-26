@@ -43,7 +43,7 @@ def get_id():
         return uuid, 200
     except ALserviceNoSuchKey:
         logger.debug("no key found for request: ", data)
-        ticket = current_app.al.create_ticket(data.key, data["idp"], data["redirect_endpoint"])
+        ticket = current_app.al.create_ticket(data)
         return ticket, 404
 
 
