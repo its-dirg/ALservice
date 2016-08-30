@@ -35,6 +35,9 @@ in the **settings.cfg** file.
 ALSERVICE_CONFIG=<path to settings.cfg> gunicorn alservice.service.run:app
 ```
 
+Make sure to setup HTTPS cert and key, and bind to the correct host/port using
+[gunicorn settings](http://docs.gunicorn.org/en/latest/settings.html).
+
 # Configuration
 | Parameter name | Data type | Example value | Description |
 | -------------- | --------- | ------------- | ----------- |
@@ -43,8 +46,8 @@ ALSERVICE_CONFIG=<path to settings.cfg> gunicorn alservice.service.run:app
 | SERVER_KEY | String | "./keys/server.key" | The path to the key file used by SSL comunication |
 | JWT_PUB_KEY | List of strings | ["./keys/satosa.pub"] | A list of signature verification keys |
 | SECRET_SESSION_KEY | String | "t3ijtgglok432jtgerfd" | A random value used by cryptographic components to for example to sign the session cookie |
-| PORT | Integer | 8167 | Port on which the ALservice should start |
-| HOST | String | "127.0.0.1" | The IP-address on which the ALservice should run |
+| PORT | Integer | 8167 | Port on which the ALservice should start if running the dev server in `run.py` |
+| HOST | String | "127.0.0.1" | The IP-address on which the ALservice should run if running the dev server in `run.py` |
 | DEBUG | boolean | False | Turn on or off the Flask servers internal debugging, should be turned off to ensure that all log information get stored in the log file |
 | DATABASE_URL | String | "mysql://localhost:3306/test" | URL to SQLite/MySQL/Postgres database, if not supplied an in-memory SQLite database will be used |
 | AUTO_SELECT_ATTRIBUTES | boolean | True | Specifies if all the attributes in the GUI should be selected or not |
