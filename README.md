@@ -32,7 +32,7 @@ If you name the file anything other than **message.txt** please update the MESSA
 in the **settings.cfg** file.
 
 ```shell
-ALSERVICE_CONFIG=<path to settings.cfg> gunicorn alservice.service.run:app
+export ALSERVICE_CONFIG=<path to settings.cfg> gunicorn alservice.service.run:app
 ```
 
 Make sure to setup HTTPS cert and key, and bind to the correct host/port using
