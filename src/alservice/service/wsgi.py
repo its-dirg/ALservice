@@ -75,4 +75,8 @@ def create_app(config: dict = {}, mail_client=None):
     app.register_blueprint(account_linking_views)
 
     setup_logging(app.config.get('LOGGING_LEVEL', 'INFO'))
+
+    logger = logging.getLogger(__name__)
+    logger.info('Running ALservice version %s', pkg_resources.get_distribution('ALservice').version)
+
     return app
