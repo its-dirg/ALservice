@@ -165,7 +165,7 @@ class AccountLinking(object):
 
         tokens = token.split(".")
         if len(tokens) != 2:
-            LOGGER.exception("Incorrect token (%s)!", token)
+            LOGGER.error("Incorrect token (%s)!", token)
             raise ALserviceTokenError()
         return tokens
 
