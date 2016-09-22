@@ -152,6 +152,7 @@ class AccountLinking(object):
         token_ticket = "%s.%s" % (token, ticket)
         email_hash = self._create_hash(email)
         self.db.save_token_state(token, email_hash)
+        LOGGER.debug("TOKEN %s", token_ticket)
         self.email_sender_create_account.send_mail(token_ticket, email)
 
     def _split_token(self, token: str) -> list:
