@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ALservice',
-    version='2.0.1',
+    version='2.0.2',
     description='',
     author='DIRG',
     author_email='dirg@its.umu.se',
