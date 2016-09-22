@@ -302,210 +302,168 @@ class ALDatasetDatabase(AccountLinkingDB):
         """
         See ALdatabase#get_uuid
         """
+        super(ALDatasetDatabase, self).get_uuid(key)
+
+        if not self.key_to_link_table.find_one(key=key):
+            raise ALserviceDbKeyDoNotExistsError()
+
+        row = self.key_to_link_table.find_one(key=key)
+
         try:
-            super(ALDatasetDatabase, self).get_uuid(key)
+            email_hash = row["email"]
+        except KeyError:
+            email_hash = None
 
-            if not self.key_to_link_table.find_one(key=key):
-                raise ALserviceDbKeyDoNotExistsError()
+        account = self.account_table.find_one(email=email_hash)
+        if not account:
+            raise ALserviceDbKeyDoNotExistsError()
 
-            row = self.key_to_link_table.find_one(key=key)
+        uuid = account["uuid"]
 
-            try:
-                email_hash = row["email"]
-            except KeyError:
-                email_hash = None
-
-            account = self.account_table.find_one(email=email_hash)
-            if not account:
-                raise ALserviceDbKeyDoNotExistsError()
-
-            uuid = account["uuid"]
-
-            if uuid is None:
-                raise ALserviceDbUnknownError()
-            return uuid
-        except Exception as error:
-            self.handle_exception(error)
-
-    def handle_exception(self, error):
-        if not isinstance(error, ALserviceDbError):
-            raise ALserviceDbUnknownError() from error
-        LOGGER.exception("Unkown error while getting uuid.")
-        raise
+        if uuid is None:
+            raise ALserviceDbUnknownError()
+        return uuid
 
     def create_account(self, email_hash: str, pin_hash: str, uuid: str):
         """
         See ALdatabase#create_account
         """
-        try:
-            super(ALDatasetDatabase, self).create_account(email_hash, pin_hash, uuid)
-            if self.account_table.find_one(email=email_hash):
-                raise ALserviceDbNotUniqueTokenError()
-            _dict_account = {
-                "email": email_hash,
-                "pin": pin_hash,
-                "uuid": uuid,
-                "timestamp": str(datetime.now())
-            }
-            self.account_table.insert(_dict_account)
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).create_account(email_hash, pin_hash, uuid)
+        if self.account_table.find_one(email=email_hash):
+            raise ALserviceDbNotUniqueTokenError()
+        _dict_account = {
+            "email": email_hash,
+            "pin": pin_hash,
+            "uuid": uuid,
+            "timestamp": str(datetime.now())
+        }
+        self.account_table.insert(_dict_account)
 
     def _create_link(self, email_hash: str, idp: str):
         link = hashlib.sha512(idp.encode() + email_hash.encode()).hexdigest()
         return link
 
     def create_link(self, key: str, idp: str, email_hash: str):
+        super(ALDatasetDatabase, self).create_link(key, idp, email_hash)
+        link = self._create_link(email_hash, idp)
+        self.remove_link(email_hash, idp)
+        _dict_key_to_link = {
+            "key": key,
+            "idp": idp,
+            "email": email_hash
+        }
+
+        _account_to_link_data = {
+            "key": key,
+            "link": link,
+        }
+
+        _dict_account_to_link = {
+            "email": email_hash,
+            "data": json.dumps([_account_to_link_data])
+        }
+
+        _dict_link_to_key = {
+            "link": link,
+            "key": key
+        }
+
         try:
-            super(ALDatasetDatabase, self).create_link(key, idp, email_hash)
-            link = self._create_link(email_hash, idp)
-            self.remove_link(email_hash, idp)
-            _dict_key_to_link = {
-                "key": key,
-                "idp": idp,
-                "email": email_hash
-            }
-
-            _account_to_link_data = {
-                "key": key,
-                "link": link,
-            }
-
-            _dict_account_to_link = {
-                "email": email_hash,
-                "data": json.dumps([_account_to_link_data])
-            }
-
-            _dict_link_to_key = {
-                "link": link,
-                "key": key
-            }
-
-            try:
-                result = self.account_to_link_table.find_one(email=email_hash)
-                if result:
-                    account_list = json.loads(result["data"])
-                    account_list.append(_account_to_link_data)
-                    _dict_account_to_link['data'] = json.dumps(account_list)
-                self.account_to_link_table.upsert(
-                    _dict_account_to_link,
-                    ["email"]
-                )
-                self.key_to_link_table.insert(_dict_key_to_link)
-                self.link_to_key_table.insert(_dict_link_to_key)
-            except IntegrityError as err:
-                raise ALserviceDbNotUniqueTokenError()
-        except Exception as error:
-            self.handle_exception(error)
+            result = self.account_to_link_table.find_one(email=email_hash)
+            if result:
+                account_list = json.loads(result["data"])
+                account_list.append(_account_to_link_data)
+                _dict_account_to_link['data'] = json.dumps(account_list)
+            self.account_to_link_table.upsert(
+                _dict_account_to_link,
+                ["email"]
+            )
+            self.key_to_link_table.insert(_dict_key_to_link)
+            self.link_to_key_table.insert(_dict_link_to_key)
+        except IntegrityError as err:
+            raise ALserviceDbNotUniqueTokenError()
 
     def remove_link(self, email_hash: str, idp: str):
-        try:
-            super(ALDatasetDatabase, self).remove_link(email_hash, idp)
-            link = self._create_link(email_hash, idp)
-            result = self.link_to_key_table.find_one(link=link)
-            if result:
-                key = result["key"]
-                self.key_to_link_table.delete(key=key)
-                self.link_to_key_table.delete(link=link)
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).remove_link(email_hash, idp)
+        link = self._create_link(email_hash, idp)
+        result = self.link_to_key_table.find_one(link=link)
+        if result:
+            key = result["key"]
+            self.key_to_link_table.delete(key=key)
+            self.link_to_key_table.delete(link=link)
 
     def get_ticket_state(self, result: str) -> TicketState:
-        try:
-            super(ALDatasetDatabase, self).get_ticket_state(result)
-            result = self.ticket_table.find_one(ticket=result)
-            if not result:
-                raise ALserviceDbKeyDoNotExistsError()
-            key = result["key"]
-            idp = result["idp"]
-            timestamp = result["timestamp"]
-            redirect = result["redirect_url"]
-            ticket_state = TicketState(timestamp, key, idp, redirect)
-            return ticket_state
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).get_ticket_state(result)
+        result = self.ticket_table.find_one(ticket=result)
+        if not result:
+            raise ALserviceDbKeyDoNotExistsError()
+        key = result["key"]
+        idp = result["idp"]
+        timestamp = result["timestamp"]
+        redirect = result["redirect_url"]
+        ticket_state = TicketState(timestamp, key, idp, redirect)
+        return ticket_state
 
     def save_ticket_state(self, ticket: str, key: str, idp: str, redirect: str):
-        try:
-            super(ALDatasetDatabase, self).save_ticket_state(ticket, key, idp, redirect)
-            if self.ticket_table.find_one(ticket=ticket):
-                raise ALserviceDbNotUniqueTokenError()
-            _dict = {
-                "ticket": ticket,
-                "idp": idp,
-                "key": key,
-                "redirect_url": redirect,
-                "timestamp": datetime.now()
-            }
-            self.ticket_table.insert(_dict)
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).save_ticket_state(ticket, key, idp, redirect)
+        if self.ticket_table.find_one(ticket=ticket):
+            raise ALserviceDbNotUniqueTokenError()
+        _dict = {
+            "ticket": ticket,
+            "idp": idp,
+            "key": key,
+            "redirect_url": redirect,
+            "timestamp": datetime.now()
+        }
+        self.ticket_table.insert(_dict)
 
     def save_token_state(self, token: str, email_hash: str):
-        try:
-            super(ALDatasetDatabase, self).save_token_state(token, email_hash)
-            if self.token_table.find_one(token=token):
-                raise ALserviceDbNotUniqueTokenError()
-            _dict = {
-                "token": token,
-                "email": email_hash,
-                "timestamp": datetime.now()
-            }
-            self.token_table.insert(_dict)
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).save_token_state(token, email_hash)
+        if self.token_table.find_one(token=token):
+            raise ALserviceDbNotUniqueTokenError()
+        _dict = {
+            "token": token,
+            "email": email_hash,
+            "timestamp": datetime.now()
+        }
+        self.token_table.insert(_dict)
 
     def get_token_state(self, token: str) -> TokenState:
-        try:
-            super(ALDatasetDatabase, self).get_token_state(token)
-            result = self.token_table.find_one(token=token)
-            if not result:
-                raise ALserviceDbKeyDoNotExistsError()
-            email_hash = result["email"]
-            timestamp = result["timestamp"]
-            email_state = TokenState(timestamp, email_hash)
-            return email_state
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).get_token_state(token)
+        result = self.token_table.find_one(token=token)
+        if not result:
+            raise ALserviceDbKeyDoNotExistsError()
+        email_hash = result["email"]
+        timestamp = result["timestamp"]
+        email_state = TokenState(timestamp, email_hash)
+        return email_state
 
     def verify_account(self, email_hash: str, pin_hash: str):
-        try:
-            super(ALDatasetDatabase, self).verify_account(email_hash, pin_hash)
-            account = self.account_table.find_one(email=email_hash)
-            if not account:
-                raise ALserviceDbKeyDoNotExistsError()
-            if pin_hash != account["pin"]:
-                raise ALserviceDbValueDoNotExistsError()
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).verify_account(email_hash, pin_hash)
+        account = self.account_table.find_one(email=email_hash)
+        if not account:
+            raise ALserviceDbKeyDoNotExistsError()
+        if pin_hash != account["pin"]:
+            raise ALserviceDbValueDoNotExistsError()
 
     def remove_ticket_state(self, ticket: str):
-        try:
-            super(ALDatasetDatabase, self).remove_ticket_state(ticket)
-            self.ticket_table.delete(ticket=ticket)
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).remove_ticket_state(ticket)
+        self.ticket_table.delete(ticket=ticket)
 
     def remove_token_state(self, token: str):
-        try:
-            super(ALDatasetDatabase, self).remove_token_state(token)
-            self.token_table.delete(token=token)
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).remove_token_state(token)
+        self.token_table.delete(token=token)
 
     def remove_account(self, email_hash: str):
-        try:
-            super(ALDatasetDatabase, self).remove_account(email_hash)
-            self.account_table.delete(email=email_hash)
-            _dict_account_to_link = self.account_to_link_table.find_one(email=email_hash)
-            if _dict_account_to_link:
-                account_to_link_list = json.loads(_dict_account_to_link['data'])
-                for tmp_link in account_to_link_list:
-                    self.link_to_key_table.delete(link=tmp_link["link"])
-                    self.key_to_link_table.delete(key=tmp_link["key"])
-                self.account_to_link_table.delete(email=email_hash)
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).remove_account(email_hash)
+        self.account_table.delete(email=email_hash)
+        _dict_account_to_link = self.account_to_link_table.find_one(email=email_hash)
+        if _dict_account_to_link:
+            account_to_link_list = json.loads(_dict_account_to_link['data'])
+            for tmp_link in account_to_link_list:
+                self.link_to_key_table.delete(link=tmp_link["link"])
+                self.key_to_link_table.delete(key=tmp_link["key"])
+            self.account_to_link_table.delete(email=email_hash)
 
     def _get_account_link_data(self, email_hash: str) -> list:
         result = self.account_to_link_table.find_one(email=email_hash)
@@ -514,11 +472,8 @@ class ALDatasetDatabase(AccountLinkingDB):
         return None
 
     def change_pin(self, email_hash: str, old_pin_hash: str, new_pin_hash: str):
-        try:
-            super(ALDatasetDatabase, self).change_pin(email_hash, old_pin_hash, new_pin_hash)
-            self.verify_account(email_hash, old_pin_hash)
-            row = self.account_table.find_one(email=email_hash)
-            row["pin"] = new_pin_hash
-            self.account_table.upsert(row, ["email"])
-        except Exception as error:
-            self.handle_exception(error)
+        super(ALDatasetDatabase, self).change_pin(email_hash, old_pin_hash, new_pin_hash)
+        self.verify_account(email_hash, old_pin_hash)
+        row = self.account_table.find_one(email=email_hash)
+        row["pin"] = new_pin_hash
+        self.account_table.upsert(row, ["email"])
